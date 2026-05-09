@@ -16,9 +16,18 @@
                     "initialStateCheck": true
                 },
                 {
-                    "name": "Look",
+                    "name": "Look Mouse",
                     "type": "Value",
                     "id": "7b87fac0-a1ab-4cfc-b604-d62d39df08a5",
+                    "expectedControlType": "Vector2",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                },
+                {
+                    "name": "Look Gamepad",
+                    "type": "Value",
+                    "id": "edffd5ae-9117-4c6d-8ad1-c0f0d88b6b5b",
                     "expectedControlType": "Vector2",
                     "processors": "",
                     "interactions": "",
@@ -84,7 +93,7 @@
                 {
                     "name": "Left Stick",
                     "id": "0c7646b0-94e0-4868-b4e9-ce443d8ea6db",
-                    "path": "2DVector",
+                    "path": "2DVector(mode=2)",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
@@ -143,7 +152,18 @@
                     "interactions": "",
                     "processors": "",
                     "groups": "",
-                    "action": "Look",
+                    "action": "Look Mouse",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "1fde48ce-36f0-4361-a2e7-88cf0953a5fb",
+                    "path": "<Gamepad>/rightStick",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Look Gamepad",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

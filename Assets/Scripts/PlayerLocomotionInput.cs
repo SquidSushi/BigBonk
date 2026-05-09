@@ -7,8 +7,10 @@ public class PlayerLocomotionInput : MonoBehaviour, PlayerControls.IPlayerLocomo
 {
     public PlayerControls PlayerControls {get; private set;}
     public Vector2 MovementInput {get; private set;}
-    public Vector2 LookInput {get; private set;}
+    public Vector2 mouseLook {get; private set;}
+    public Vector2 gamepadLook {get; private set;}
 
+    
     private void OnEnable()
     {
         PlayerControls = new PlayerControls();
@@ -28,8 +30,14 @@ public class PlayerLocomotionInput : MonoBehaviour, PlayerControls.IPlayerLocomo
         MovementInput = context.ReadValue<Vector2>();
     }
 
-    public void OnLook(InputAction.CallbackContext context)
+    public void OnLookMouse(InputAction.CallbackContext context)
     {
-        LookInput = context.ReadValue<Vector2>();
+        mouseLook = context.ReadValue<Vector2>();
+    }
+
+    public void OnLookGamepad(InputAction.CallbackContext context)
+    {
+        gamepadLook = context.ReadValue<Vector2>();
+     
     }
 }

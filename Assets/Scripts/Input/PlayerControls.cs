@@ -102,9 +102,18 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
                     ""initialStateCheck"": true
                 },
                 {
-                    ""name"": ""Look"",
+                    ""name"": ""Look Mouse"",
                     ""type"": ""Value"",
                     ""id"": ""7b87fac0-a1ab-4cfc-b604-d62d39df08a5"",
+                    ""expectedControlType"": ""Vector2"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": true
+                },
+                {
+                    ""name"": ""Look Gamepad"",
+                    ""type"": ""Value"",
+                    ""id"": ""edffd5ae-9117-4c6d-8ad1-c0f0d88b6b5b"",
                     ""expectedControlType"": ""Vector2"",
                     ""processors"": """",
                     ""interactions"": """",
@@ -170,7 +179,7 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
                 {
                     ""name"": ""Left Stick"",
                     ""id"": ""0c7646b0-94e0-4868-b4e9-ce443d8ea6db"",
-                    ""path"": ""2DVector"",
+                    ""path"": ""2DVector(mode=2)"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",
@@ -229,7 +238,18 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",
-                    ""action"": ""Look"",
+                    ""action"": ""Look Mouse"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""1fde48ce-36f0-4361-a2e7-88cf0953a5fb"",
+                    ""path"": ""<Gamepad>/rightStick"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Look Gamepad"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 }
@@ -241,7 +261,8 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
         // PlayerLocomotionMap
         m_PlayerLocomotionMap = asset.FindActionMap("PlayerLocomotionMap", throwIfNotFound: true);
         m_PlayerLocomotionMap_Movement = m_PlayerLocomotionMap.FindAction("Movement", throwIfNotFound: true);
-        m_PlayerLocomotionMap_Look = m_PlayerLocomotionMap.FindAction("Look", throwIfNotFound: true);
+        m_PlayerLocomotionMap_LookMouse = m_PlayerLocomotionMap.FindAction("Look Mouse", throwIfNotFound: true);
+        m_PlayerLocomotionMap_LookGamepad = m_PlayerLocomotionMap.FindAction("Look Gamepad", throwIfNotFound: true);
     }
 
     ~@PlayerControls()
@@ -323,7 +344,8 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
     private readonly InputActionMap m_PlayerLocomotionMap;
     private List<IPlayerLocomotionMapActions> m_PlayerLocomotionMapActionsCallbackInterfaces = new List<IPlayerLocomotionMapActions>();
     private readonly InputAction m_PlayerLocomotionMap_Movement;
-    private readonly InputAction m_PlayerLocomotionMap_Look;
+    private readonly InputAction m_PlayerLocomotionMap_LookMouse;
+    private readonly InputAction m_PlayerLocomotionMap_LookGamepad;
     /// <summary>
     /// Provides access to input actions defined in input action map "PlayerLocomotionMap".
     /// </summary>
@@ -340,9 +362,13 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
         /// </summary>
         public InputAction @Movement => m_Wrapper.m_PlayerLocomotionMap_Movement;
         /// <summary>
-        /// Provides access to the underlying input action "PlayerLocomotionMap/Look".
+        /// Provides access to the underlying input action "PlayerLocomotionMap/LookMouse".
         /// </summary>
-        public InputAction @Look => m_Wrapper.m_PlayerLocomotionMap_Look;
+        public InputAction @LookMouse => m_Wrapper.m_PlayerLocomotionMap_LookMouse;
+        /// <summary>
+        /// Provides access to the underlying input action "PlayerLocomotionMap/LookGamepad".
+        /// </summary>
+        public InputAction @LookGamepad => m_Wrapper.m_PlayerLocomotionMap_LookGamepad;
         /// <summary>
         /// Provides access to the underlying input action map instance.
         /// </summary>
@@ -372,9 +398,12 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
             @Movement.started += instance.OnMovement;
             @Movement.performed += instance.OnMovement;
             @Movement.canceled += instance.OnMovement;
-            @Look.started += instance.OnLook;
-            @Look.performed += instance.OnLook;
-            @Look.canceled += instance.OnLook;
+            @LookMouse.started += instance.OnLookMouse;
+            @LookMouse.performed += instance.OnLookMouse;
+            @LookMouse.canceled += instance.OnLookMouse;
+            @LookGamepad.started += instance.OnLookGamepad;
+            @LookGamepad.performed += instance.OnLookGamepad;
+            @LookGamepad.canceled += instance.OnLookGamepad;
         }
 
         /// <summary>
@@ -389,9 +418,12 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
             @Movement.started -= instance.OnMovement;
             @Movement.performed -= instance.OnMovement;
             @Movement.canceled -= instance.OnMovement;
-            @Look.started -= instance.OnLook;
-            @Look.performed -= instance.OnLook;
-            @Look.canceled -= instance.OnLook;
+            @LookMouse.started -= instance.OnLookMouse;
+            @LookMouse.performed -= instance.OnLookMouse;
+            @LookMouse.canceled -= instance.OnLookMouse;
+            @LookGamepad.started -= instance.OnLookGamepad;
+            @LookGamepad.performed -= instance.OnLookGamepad;
+            @LookGamepad.canceled -= instance.OnLookGamepad;
         }
 
         /// <summary>
@@ -440,11 +472,18 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnMovement(InputAction.CallbackContext context);
         /// <summary>
-        /// Method invoked when associated input action "Look" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// Method invoked when associated input action "Look Mouse" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
         /// </summary>
         /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
-        void OnLook(InputAction.CallbackContext context);
+        void OnLookMouse(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "Look Gamepad" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnLookGamepad(InputAction.CallbackContext context);
     }
 }
