@@ -15,15 +15,8 @@ public class PlayerController : MonoBehaviour
     public float drag;
     public float turnSpeed;
 
-    [Header("Camera Settings")]
-    public float mouseLookSenseH;
-    public float mouseLookSenseV;
-    public float gamepadLookSenseH;
-    public float gamepadLookSenseV;
-    public float lookLimitV;
-    
     private CharacterInputProvider _characterInputProvider;
-    private Vector2 _cameraRotation = Vector2.zero;
+    private PlayerState _playerState;
 
     private void Awake()
     {
@@ -36,9 +29,23 @@ public class PlayerController : MonoBehaviour
         {
             _playerCamera = GetComponentInChildren<Camera>();
         }
+
+        _playerState = GetComponent<PlayerState>();
     }
 
     private void Update()
+    {
+        UpdateMovementState();
+        HandleLateralMovement();
+    }
+
+    private void UpdateMovementState()
+    {
+        bool isMovementInput = _characterInputProvider.MovementInput != Vector2.zero;
+        
+    }
+    
+    private void HandleLateralMovement()
     {
         // Calculate movementDirection
         Vector3 cameraForwardXZ = new Vector3(_playerCamera.transform.forward.x, 0f, _playerCamera.transform.forward.z).normalized;
@@ -68,28 +75,5 @@ public class PlayerController : MonoBehaviour
             );
         }
     }
-
-    /*private void LateUpdate()
-    {
-        Vector2 lookInput = Vector2.zero;
-
-        if (_characterInputProvider.mouseLook.sqrMagnitude > 0.001f)
-            lookInput = _characterInputProvider.mouseLook * mouseLookSenseH;
-
-        else if (_characterInputProvider.gamepadLook.sqrMagnitude > 0.001f)
-            lookInput = _characterInputProvider.gamepadLook * gamepadLookSenseH;
-
-        _cameraRotation.x += lookInput.x;
-        _cameraRotation.y = Mathf.Clamp(
-            _cameraRotation.y - lookInput.y,
-            -lookLimitV,
-            lookLimitV
-        );
-
-        _playerCamera.transform.rotation = Quaternion.Euler(
-            _cameraRotation.y,
-            _cameraRotation.x,
-            0f
-        );
-    }*/
+    
 }

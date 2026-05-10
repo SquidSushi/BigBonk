@@ -392,6 +392,7 @@ GameObject:
   - component: {fileID: 7778418600550153274}
   - component: {fileID: 4519835721797427174}
   - component: {fileID: 2463157896669090562}
+  - component: {fileID: 6824748287261531865}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -481,11 +482,6 @@ MonoBehaviour:
   runSpeed: 4
   drag: 30
   turnSpeed: 10
-  mouseLookSenseH: 0.1
-  mouseLookSenseV: 0.1
-  gamepadLookSenseH: 1
-  gamepadLookSenseV: 1
-  lookLimitV: 75
 --- !u!114 &2463157896669090562
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -498,6 +494,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 24f554de5f389e442a697a269f9dfe83, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerInputReader
+--- !u!114 &6824748287261531865
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 975422624012187956}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f2e50593de8c66b48895887dad849d30, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CameraController
+  mouseLookSens: 0.1
+  gamepadLookSens: 5
+  lookLimitV: 75
 --- !u!1 &1025981000232048470
 GameObject:
   m_ObjectHideFlags: 0
