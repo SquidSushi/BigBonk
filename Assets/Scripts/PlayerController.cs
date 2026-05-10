@@ -6,8 +6,8 @@ using UnityEngine;
 public class PlayerController : MonoBehaviour
 { 
     [Header("Components")]
-    [SerializeField] private CharacterController _characterController;
-    [SerializeField] private Camera _playerCamera;
+    private CharacterController _characterController;
+    private Camera _playerCamera;
     
     [Header("Base Movement")]
     public float runAcceleration;
@@ -22,12 +22,20 @@ public class PlayerController : MonoBehaviour
     public float gamepadLookSenseV;
     public float lookLimitV;
     
-    private PlayerLocomotionInput _playerLocomotionInput;
+    private CharacterInputProvider _characterInputProvider;
     private Vector2 _cameraRotation = Vector2.zero;
 
     private void Awake()
     {
-        _playerLocomotionInput = GetComponent<PlayerLocomotionInput>();
+        _characterInputProvider = GetComponent<CharacterInputProvider>();
+        if (_characterController == null)
+        {
+            _characterController = GetComponent<CharacterController>();
+        }
+        if (_playerCamera == null)
+        {
+            _playerCamera = GetComponentInChildren<Camera>();
+        }
     }
 
     private void Update()
@@ -35,7 +43,7 @@ public class PlayerController : MonoBehaviour
         // Calculate movementDirection
         Vector3 cameraForwardXZ = new Vector3(_playerCamera.transform.forward.x, 0f, _playerCamera.transform.forward.z).normalized;
         Vector3 cameraRightXZ = new Vector3(_playerCamera.transform.right.x, 0f, _playerCamera.transform.right.z).normalized;
-        Vector3 movementDirection = cameraRightXZ * _playerLocomotionInput.MovementInput.x + cameraForwardXZ * _playerLocomotionInput.MovementInput.y;
+        Vector3 movementDirection = cameraRightXZ * _characterInputProvider.MovementInput.x + cameraForwardXZ * _characterInputProvider.MovementInput.y;
         
         Vector3 movementDelta = movementDirection * runAcceleration * Time.deltaTime;
         Vector3 newVelocity = _characterController.velocity + movementDelta;
@@ -61,15 +69,15 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    private void LateUpdate()
+    /*private void LateUpdate()
     {
         Vector2 lookInput = Vector2.zero;
 
-        if (_playerLocomotionInput.mouseLook.sqrMagnitude > 0.001f)
-            lookInput = _playerLocomotionInput.mouseLook * mouseLookSenseH;
+        if (_characterInputProvider.mouseLook.sqrMagnitude > 0.001f)
+            lookInput = _characterInputProvider.mouseLook * mouseLookSenseH;
 
-        else if (_playerLocomotionInput.gamepadLook.sqrMagnitude > 0.001f)
-            lookInput = _playerLocomotionInput.gamepadLook * gamepadLookSenseH;
+        else if (_characterInputProvider.gamepadLook.sqrMagnitude > 0.001f)
+            lookInput = _characterInputProvider.gamepadLook * gamepadLookSenseH;
 
         _cameraRotation.x += lookInput.x;
         _cameraRotation.y = Mathf.Clamp(
@@ -83,5 +91,5 @@ public class PlayerController : MonoBehaviour
             _cameraRotation.x,
             0f
         );
-    }
+    }*/
 }
