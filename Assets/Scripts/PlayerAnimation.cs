@@ -23,13 +23,13 @@ public class PlayerAnimation : MonoBehaviour
 
     private void UpdateAnimationState()
     {
-        // Prüft ob überhaupt Movement Input vorhanden ist
-        bool isMoving = input.MovementInput.sqrMagnitude > 0.01f;
+        float targetBlend = 0f;
 
-        // Zielwert: 0 = Idle, 1 = Walk
-        float targetBlend = isMoving ? 1f : 0f;
+        if (input.MovementInput.sqrMagnitude > 0.01f)
+        {
+            targetBlend = input.SprintToggledOn ? 1f : 0.5f;
+        }
 
-        // Smooth blend
         currentBlend = Mathf.Lerp(currentBlend, targetBlend, blendSpeed * Time.deltaTime);
 
         animator.SetFloat(inputXHash, currentBlend);

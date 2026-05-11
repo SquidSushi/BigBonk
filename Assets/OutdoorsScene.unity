@@ -705,7 +705,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerAnimation
   animator: {fileID: 2075017755}
-  blendSpeed: 10
+  blendSpeed: 8
 --- !u!114 &2075017760
 MonoBehaviour:
   m_ObjectHideFlags: 0
