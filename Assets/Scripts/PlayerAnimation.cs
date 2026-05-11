@@ -1,20 +1,19 @@
-using System;
 using UnityEngine;
 
 public class PlayerAnimation : MonoBehaviour
 {
-    [SerializeField] private Animator _animator;
-    [SerializeField] private float locomotionBlendSpeed;
-    
-    private PlayerInputReader Input;
+    [SerializeField] private Animator animator;
+    [SerializeField] private float blendSpeed = 5f;
 
-    private static int inputXHash = Animator.StringToHash("InputX");
-    private static int inputYHash = Animator.StringToHash("InputY");
-    private Vector3 _currentBlendInput = Vector3.zero;
-    
+    private PlayerInputReader input;
+
+    private static readonly int inputXHash = Animator.StringToHash("InputX");
+
+    private float currentBlend;
+
     private void Awake()
     {
-        Input = GetComponent<PlayerInputReader>();
+        input = GetComponent<PlayerInputReader>();
     }
 
     private void Update()
@@ -24,11 +23,15 @@ public class PlayerAnimation : MonoBehaviour
 
     private void UpdateAnimationState()
     {
-        Vector2 inputTarget = Input.MovementInput;
-        _currentBlendInput = Vector3.Lerp(_currentBlendInput, inputTarget, locomotionBlendSpeed * Time.deltaTime);
-        
-        _animator.SetFloat(inputXHash, _currentBlendInput.x);
-        _animator.SetFloat(inputYHash, _currentBlendInput.y);
+        // Prüft ob überhaupt Movement Input vorhanden ist
+        bool isMoving = input.MovementInput.sqrMagnitude > 0.01f;
+
+        // Zielwert: 0 = Idle, 1 = Walk
+        float targetBlend = isMoving ? 1f : 0f;
+
+        // Smooth blend
+        currentBlend = Mathf.Lerp(currentBlend, targetBlend, blendSpeed * Time.deltaTime);
+
+        animator.SetFloat(inputXHash, currentBlend);
     }
-    
 }

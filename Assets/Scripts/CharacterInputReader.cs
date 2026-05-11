@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 [DefaultExecutionOrder(-2)]
-public class CharacterInputProvider : MonoBehaviour
+public class CharacterInputReader : MonoBehaviour
 {
     public Vector2 MovementInput {get; protected set;}
     

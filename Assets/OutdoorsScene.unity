@@ -420,7 +420,7 @@ GameObject:
   - component: {fileID: 988135039}
   - component: {fileID: 988135038}
   - component: {fileID: 988135037}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Plane
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -533,7 +533,7 @@ GameObject:
   - component: {fileID: 1978510946}
   - component: {fileID: 1978510945}
   - component: {fileID: 1978510944}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Cube
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -704,8 +704,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f1b04e188db8fdf40bd97767b4665e60, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerAnimation
-  _animator: {fileID: 2075017755}
-  locomotionBlendSpeed: 12
+  animator: {fileID: 2075017755}
+  blendSpeed: 10
 --- !u!114 &2075017760
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -730,6 +730,22 @@ PrefabInstance:
     - target: {fileID: 975422624012187956, guid: 73964f7df13f7654386cd8cd51282a78, type: 3}
       propertyPath: m_Name
       value: Player
+      objectReference: {fileID: 0}
+    - target: {fileID: 4519835721797427174, guid: 73964f7df13f7654386cd8cd51282a78, type: 3}
+      propertyPath: drag
+      value: 30
+      objectReference: {fileID: 0}
+    - target: {fileID: 4519835721797427174, guid: 73964f7df13f7654386cd8cd51282a78, type: 3}
+      propertyPath: sprintspeed
+      value: 7
+      objectReference: {fileID: 0}
+    - target: {fileID: 4519835721797427174, guid: 73964f7df13f7654386cd8cd51282a78, type: 3}
+      propertyPath: runAcceleration
+      value: 50
+      objectReference: {fileID: 0}
+    - target: {fileID: 4519835721797427174, guid: 73964f7df13f7654386cd8cd51282a78, type: 3}
+      propertyPath: sprintAcceleration
+      value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 5406081347212514150, guid: 73964f7df13f7654386cd8cd51282a78, type: 3}
       propertyPath: m_LocalPosition.x
@@ -779,6 +795,22 @@ PrefabInstance:
       propertyPath: m_Controller
       value: 
       objectReference: {fileID: 9100000, guid: 1eb6f951e0406ea49925a7f56b6ba964, type: 2}
+    - target: {fileID: 8304138797099259184, guid: 73964f7df13f7654386cd8cd51282a78, type: 3}
+      propertyPath: AvoidObstacles.Enabled
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8304138797099259184, guid: 73964f7df13f7654386cd8cd51282a78, type: 3}
+      propertyPath: AvoidObstacles.IgnoreTag
+      value: DummyCamera
+      objectReference: {fileID: 0}
+    - target: {fileID: 8304138797099259184, guid: 73964f7df13f7654386cd8cd51282a78, type: 3}
+      propertyPath: AvoidObstacles.CollisionFilter.m_Bits
+      value: 64
+      objectReference: {fileID: 0}
+    - target: {fileID: 8697215156370698707, guid: 73964f7df13f7654386cd8cd51282a78, type: 3}
+      propertyPath: m_TagString
+      value: DummyCamera
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
