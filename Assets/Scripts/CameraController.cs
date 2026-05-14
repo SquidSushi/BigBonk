@@ -16,6 +16,7 @@ public class CameraController : MonoBehaviour
     public float autoRotateSpeed = 2f;
     public float autoRotateDelay = 0.25f;
     public float autoRotateInputThreshold = 0.1f;
+    public float autoRotateDeadzone = 0.25f;
 
     [Header("Auto Vertical Reset")]
     public float verticalResetDelay = 1.5f;
@@ -71,7 +72,7 @@ public class CameraController : MonoBehaviour
         Vector2 targetLookInput = rawLookInput * sensitivity;
 
         // =========================
-        // SMOOTH LOOK (ACCELERATION)
+        // SMOOTH LOOK
         // =========================
         float smoothFactor = 1f - Mathf.Exp(-lookSmoothing * Time.deltaTime);
 
@@ -82,7 +83,7 @@ public class CameraController : MonoBehaviour
         );
 
         // =========================
-        // APPLY CAMERA ROTATION (MANUAL)
+        // MANUAL CAMERA ROTATION
         // =========================
         _cameraRotation.x += currentLookVelocity.x;
 
@@ -107,13 +108,25 @@ public class CameraController : MonoBehaviour
         {
             float horizontalInfluence = movementInput.x;
 
-            float forwardFactor = Mathf.Clamp01(movementInput.y + 0.5f);
+            // DEADZONE
+            if (Mathf.Abs(horizontalInfluence) > autoRotateDeadzone)
+            {
+                // Weiche Skalierung nach Deadzone
+                float normalizedInfluence =
+                    (Mathf.Abs(horizontalInfluence) - autoRotateDeadzone) /
+                    (1f - autoRotateDeadzone);
 
-            _cameraRotation.x +=
-                horizontalInfluence *
-                forwardFactor *
-                autoRotateSpeed *
-                Time.deltaTime;
+                normalizedInfluence *= Mathf.Sign(horizontalInfluence);
+
+                float forwardFactor =
+                    Mathf.Clamp01(movementInput.y + 0.5f);
+
+                _cameraRotation.x +=
+                    normalizedInfluence *
+                    forwardFactor *
+                    autoRotateSpeed *
+                    Time.deltaTime;
+            }
         }
 
         // =========================
