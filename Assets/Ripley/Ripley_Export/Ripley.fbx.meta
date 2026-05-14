@@ -3,7 +3,32 @@ guid: d21cacd4b0f53ed498ed88fefd20d804
 ModelImporter:
   serializedVersion: 24200
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Eyes
+    second: {fileID: 2100000, guid: 64fb82e34bff047468bab6b94a7fc571, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: HT_Default_Material
+    second: {fileID: 2100000, guid: bc563c922c28b2444a25c320a38dc5e0, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: LOWER
+    second: {fileID: 2100000, guid: 76b4e84fa3d7caf40b8b73b4a50e419c, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Ripley_Sword
+    second: {fileID: 2100000, guid: 9b9e0cb10e68d5d4dab3436a017a8214, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: UPPER
+    second: {fileID: 2100000, guid: fe6d39778dc97fe44aff52b69c0076d9, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0
