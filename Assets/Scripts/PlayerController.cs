@@ -10,19 +10,21 @@ public class PlayerController : MonoBehaviour
     private Camera _playerCamera;
     
     [Header("Base Movement")]
-    public float runAcceleration;
-    private float currentSpeed;
     public float walkSpeed;
     public float runSpeed;
+    public float sprintSpeed;
+    public float runAcceleration;
     public float sprintAcceleration;
-    public float sprintspeed;
     public float drag;
     public float turnSpeed;
     public float gravity;
-    private float _verticalVelocity;
+    
     
     private float movingThreshold = 0.01f;
-
+    private float targetSpeed;
+    public float CurrentSpeed { get; private set; }
+    private float _verticalVelocity;
+    
     private PlayerInputReader _playerInputReader;
     private PlayerState _playerState;
 
@@ -53,8 +55,8 @@ public class PlayerController : MonoBehaviour
         bool isMovementInput = _playerInputReader.MovementInput != Vector2.zero;
         bool isMovingLaterally = IsMovingLaterally();
         bool isSprinting = _playerInputReader.SprintToggledOn && isMovingLaterally;
-        bool isRunning = !_playerInputReader.SprintToggledOn && isMovingLaterally && currentSpeed >= runSpeed;
-        bool isWalking = !_playerInputReader.SprintToggledOn && isMovingLaterally && currentSpeed <= runSpeed;
+        bool isRunning = !_playerInputReader.SprintToggledOn && isMovingLaterally && targetSpeed >= runSpeed;
+        bool isWalking = !_playerInputReader.SprintToggledOn && isMovingLaterally && targetSpeed <= runSpeed;
         bool isGrounded = IsGrounded();
         
         PlayerMovementState lateralState =
@@ -107,18 +109,20 @@ public class PlayerController : MonoBehaviour
 
         if (movementDirection.sqrMagnitude > 0.85f)
         {
-            currentSpeed = runSpeed;
+            targetSpeed = runSpeed;
         }
         else
         {
-            currentSpeed = walkSpeed;
+            targetSpeed = walkSpeed;
         }
         
-        float clampLateralMagnitude = isSprinting ? sprintspeed : currentSpeed;
+        float clampLateralMagnitude = isSprinting ? sprintSpeed : targetSpeed;
         // Add drag to player
         Vector3 currentDrag = newVelocity.normalized * drag * Time.deltaTime;
         newVelocity = (newVelocity.magnitude > drag * Time.deltaTime) ? newVelocity - currentDrag : Vector3.zero;
         newVelocity = Vector3.ClampMagnitude(newVelocity, clampLateralMagnitude);
+        Vector3 lateralVelocity = new Vector3(newVelocity.x, 0f, newVelocity.z);
+        CurrentSpeed = lateralVelocity.magnitude;
         newVelocity.y += _verticalVelocity;
         
         // Move Character
@@ -142,12 +146,12 @@ public class PlayerController : MonoBehaviour
         Vector2 normalizedInput = movementInput.normalized;
         float inputMagnitude = movementInput.magnitude;
 
-        return normalizedInput * Mathf.Pow(inputMagnitude, 0.33f);
+        return normalizedInput * Mathf.Pow(inputMagnitude, 0.25f);
     }
 
     private bool IsMovingLaterally()
     {
-        Vector3 lateralVelocity = new Vector3(_characterController.velocity.x, 0f, _characterController.velocity.y);
+        Vector3 lateralVelocity = new Vector3(_characterController.velocity.x, 0f, _characterController.velocity.z);
         return lateralVelocity.magnitude > movingThreshold;
     }
 

@@ -7,6 +7,7 @@ public class PlayerAnimation : MonoBehaviour
 
     private PlayerState _playerState;
     private PlayerInputReader input;
+    private PlayerController _playerController;
 
     private static readonly int inputXHash = Animator.StringToHash("InputX");
     private static int isGroundedHash = Animator.StringToHash("IsGrounded");
@@ -18,6 +19,7 @@ public class PlayerAnimation : MonoBehaviour
     {
         input = GetComponent<PlayerInputReader>();
         _playerState = GetComponent<PlayerState>();
+        _playerController = GetComponent<PlayerController>();
     }
 
     private void Update()
@@ -37,20 +39,51 @@ public class PlayerAnimation : MonoBehaviour
         animator.SetBool(isFallingHash, isFalling);
        
         
+        float speed = _playerController.CurrentSpeed;
+
         float targetBlend = 0f;
 
-        if (input.MovementInput.sqrMagnitude > 0.01f)
+        if (speed > 0.01f)
         {
-            if (input.SprintToggledOn)
+            // WALK -> RUN
+            if (!input.SprintToggledOn)
             {
-                targetBlend = 2f;
+                if (speed <= _playerController.walkSpeed)
+                {
+                    // 0 -> 1
+                    targetBlend = Mathf.Lerp(
+                        0f,
+                        1f,
+                        Mathf.InverseLerp(
+                            0f,
+                            _playerController.walkSpeed,
+                            speed));
+                }
+                else
+                {
+                    // 1 -> 2
+                    targetBlend = Mathf.Lerp(
+                        1f,
+                        2f,
+                        Mathf.InverseLerp(
+                            _playerController.walkSpeed,
+                            _playerController.runSpeed,
+                            speed));
+                }
             }
+            // RUN -> SPRINT
             else
             {
-                targetBlend = input.MovementInput.magnitude;
+                // 2 -> 3
+                targetBlend = Mathf.Lerp(
+                    2f,
+                    3f,
+                    Mathf.InverseLerp(
+                        _playerController.runSpeed,
+                        _playerController.sprintSpeed,
+                        speed));
             }
         }
-
         currentBlend = Mathf.Lerp(currentBlend, targetBlend, blendSpeed * Time.deltaTime);
 
         animator.SetFloat(inputXHash, currentBlend);
