@@ -17,6 +17,10 @@ public class CameraController : MonoBehaviour
     public float autoRotateDelay = 0.25f;
     public float autoRotateInputThreshold = 0.1f;
 
+    [Header("Auto Vertical Reset")]
+    public float verticalResetDelay = 1.5f;
+    public float verticalResetSpeed = 5f;
+
     [Header("Camera Smoothing")]
     public float lookSmoothing = 12f;
 
@@ -89,7 +93,7 @@ public class CameraController : MonoBehaviour
         );
 
         // =========================
-        // AUTO ROTATE
+        // AUTO ROTATE HORIZONTAL
         // =========================
         bool allowAutoRotate =
             Time.time > lastManualLookTime + autoRotateDelay;
@@ -110,6 +114,21 @@ public class CameraController : MonoBehaviour
                 forwardFactor *
                 autoRotateSpeed *
                 Time.deltaTime;
+        }
+
+        // =========================
+        // AUTO RESET VERTICAL
+        // =========================
+        bool allowVerticalReset =
+            Time.time > lastManualLookTime + verticalResetDelay;
+
+        if (allowVerticalReset)
+        {
+            _cameraRotation.y = Mathf.Lerp(
+                _cameraRotation.y,
+                0f,
+                verticalResetSpeed * Time.deltaTime
+            );
         }
 
         // =========================
