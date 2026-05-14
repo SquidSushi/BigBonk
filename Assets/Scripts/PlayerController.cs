@@ -11,6 +11,8 @@ public class PlayerController : MonoBehaviour
     
     [Header("Base Movement")]
     public float runAcceleration;
+    private float currentSpeed;
+    public float walkSpeed;
     public float runSpeed;
     public float sprintAcceleration;
     public float sprintspeed;
@@ -67,6 +69,7 @@ public class PlayerController : MonoBehaviour
             _playerState.SePlayerMovementState(PlayerMovementState.Falling);
         }
         
+        
     }
 
     private void HandleVerticalMovement()
@@ -87,16 +90,26 @@ public class PlayerController : MonoBehaviour
         bool isGrounded = _playerState.InGroundedState();
 
         float lateralAcceleration = isSprinting ? sprintAcceleration : runAcceleration;
-        float clampLateralMagnitude = isSprinting ? sprintspeed : runSpeed;
+        
         
         // Calculate movementDirection
         Vector3 cameraForwardXZ = new Vector3(_playerCamera.transform.forward.x, 0f, _playerCamera.transform.forward.z).normalized;
         Vector3 cameraRightXZ = new Vector3(_playerCamera.transform.right.x, 0f, _playerCamera.transform.right.z).normalized;
-        Vector3 movementDirection = cameraRightXZ * _playerInputReader.MovementInput.x + cameraForwardXZ * _playerInputReader.MovementInput.y;
-        
+        Vector2 transformedInput = TransformedInput(_playerInputReader.MovementInput);
+        Vector3 movementDirection = cameraRightXZ * transformedInput.x + cameraForwardXZ * transformedInput.y;
         Vector3 movementDelta = movementDirection * lateralAcceleration * Time.deltaTime;
         Vector3 newVelocity = _characterController.velocity + movementDelta;
+
+        if (movementDirection.sqrMagnitude > 0.85f)
+        {
+            currentSpeed = runSpeed;
+        }
+        else
+        {
+            currentSpeed = walkSpeed;
+        }
         
+        float clampLateralMagnitude = isSprinting ? sprintspeed : currentSpeed;
         // Add drag to player
         Vector3 currentDrag = newVelocity.normalized * drag * Time.deltaTime;
         newVelocity = (newVelocity.magnitude > drag * Time.deltaTime) ? newVelocity - currentDrag : Vector3.zero;
@@ -117,6 +130,14 @@ public class PlayerController : MonoBehaviour
                 turnSpeed * Time.deltaTime
             );
         }
+    }
+    
+    private Vector2 TransformedInput(Vector2 movementInput)
+    {
+        Vector2 normalizedInput = movementInput.normalized;
+        float inputMagnitude = movementInput.magnitude;
+
+        return normalizedInput * Mathf.Pow(inputMagnitude, 0.33f);
     }
 
     private bool IsMovingLaterally()

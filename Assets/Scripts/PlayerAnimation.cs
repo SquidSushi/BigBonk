@@ -41,7 +41,14 @@ public class PlayerAnimation : MonoBehaviour
 
         if (input.MovementInput.sqrMagnitude > 0.01f)
         {
-            targetBlend = input.SprintToggledOn ? 1f : 0.5f;
+            if (input.SprintToggledOn)
+            {
+                targetBlend = 2f;
+            }
+            else
+            {
+                targetBlend = input.MovementInput.magnitude;
+            }
         }
 
         currentBlend = Mathf.Lerp(currentBlend, targetBlend, blendSpeed * Time.deltaTime);
