@@ -53,10 +53,15 @@ public class PlayerController : MonoBehaviour
         bool isMovementInput = _playerInputReader.MovementInput != Vector2.zero;
         bool isMovingLaterally = IsMovingLaterally();
         bool isSprinting = _playerInputReader.SprintToggledOn && isMovingLaterally;
+        bool isRunning = !_playerInputReader.SprintToggledOn && isMovingLaterally && currentSpeed >= runSpeed;
+        bool isWalking = !_playerInputReader.SprintToggledOn && isMovingLaterally && currentSpeed <= runSpeed;
         bool isGrounded = IsGrounded();
         
-        PlayerMovementState lateralState = isSprinting ? PlayerMovementState.Sprinting :
-                                            isMovingLaterally || isMovementInput ? PlayerMovementState.Running : PlayerMovementState.Idling;
+        PlayerMovementState lateralState =
+            isSprinting ? PlayerMovementState.Sprinting :
+            isRunning   ? PlayerMovementState.Running :
+            isWalking   ? PlayerMovementState.Walking :
+            PlayerMovementState.Idling;
         _playerState.SePlayerMovementState(lateralState);
         
         // Control Airborn State
