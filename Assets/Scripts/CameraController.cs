@@ -108,22 +108,18 @@ public class CameraController : MonoBehaviour
         {
             float horizontalInfluence = movementInput.x;
 
-            // DEADZONE
+// DEADZONE
             if (Mathf.Abs(horizontalInfluence) > autoRotateDeadzone)
             {
-                // Weiche Skalierung nach Deadzone
+                // Analog-Stick Skalierung nach Deadzone
                 float normalizedInfluence =
                     (Mathf.Abs(horizontalInfluence) - autoRotateDeadzone) /
                     (1f - autoRotateDeadzone);
 
                 normalizedInfluence *= Mathf.Sign(horizontalInfluence);
 
-                float forwardFactor =
-                    Mathf.Clamp01(movementInput.y + 0.5f);
-
                 _cameraRotation.x +=
                     normalizedInfluence *
-                    forwardFactor *
                     autoRotateSpeed *
                     Time.deltaTime;
             }
