@@ -1347,6 +1347,10 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6824748287261531865, guid: 73964f7df13f7654386cd8cd51282a78, type: 3}
+      propertyPath: defaultPitch
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 6824748287261531865, guid: 73964f7df13f7654386cd8cd51282a78, type: 3}
       propertyPath: cameraRotationTarget
       value: 
       objectReference: {fileID: 2003546330}
