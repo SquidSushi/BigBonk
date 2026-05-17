@@ -16,6 +16,7 @@ GameObject:
   - component: {fileID: 8252896637280229707}
   - component: {fileID: 5893194098057817984}
   - component: {fileID: 1677818531705935048}
+  - component: {fileID: 8412315546507683717}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -85,6 +86,8 @@ MonoBehaviour:
   drag: 25
   turnSpeed: 10
   gravity: 1
+  attackTurnSpeed: 300
+  maxAttackRotationBudget: 180
 --- !u!114 &2463157896669090562
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -169,6 +172,25 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &8412315546507683717
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 975422624012187956}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6c428549ef8c8a446b64183448cedf91, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: '::'
+  rootMotionDisableDelay: 0.08
+  walkingCancelInputThreshold: 0.15
+  walkingCancelLockoutAfterAttackStart: 0.15
+  ignoreEndEventsAfterAttackStart: 0.08
+  attackInProgress: 0
+  allowAttacking: 0
+  allowWalking: 0
 --- !u!1 &2913438161013370666
 GameObject:
   m_ObjectHideFlags: 0
@@ -257,7 +279,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 625c14eee3ad46c99df7c7c891ef668a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Cinemachine::Unity.Cinemachine.CinemachineThirdPersonFollow
-  Damping: {x: 1.5, y: 0.5, z: 1}
+  Damping: {x: 1, y: 0.5, z: 1}
   ShoulderOffset: {x: 0, y: 0, z: 0}
   VerticalArmLength: -0.2
   CameraSide: 1
