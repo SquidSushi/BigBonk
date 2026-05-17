@@ -1,5 +1,3 @@
-using System;
-using Unity.VisualScripting;
 using UnityEngine;
 
 [DefaultExecutionOrder(-1)]
@@ -19,7 +17,6 @@ public class PlayerController : MonoBehaviour
     public float turnSpeed;
     public float gravity;
     
-    
     private float movingThreshold = 0.01f;
     private float targetSpeed;
     public float CurrentSpeed { get; private set; }
@@ -27,32 +24,49 @@ public class PlayerController : MonoBehaviour
     
     private PlayerInputReader _playerInputReader;
     private PlayerState _playerState;
+    private PlayerCombatController _playerCombatController;
 
     private void Awake()
     {
         _playerInputReader = GetComponent<PlayerInputReader>();
+
         if (_characterController == null)
-        {
             _characterController = GetComponent<CharacterController>();
-        }
+
         if (_playerCamera == null)
-        {
             _playerCamera = GetComponentInChildren<Camera>();
-        }
 
         _playerState = GetComponent<PlayerState>();
+        _playerCombatController = GetComponent<PlayerCombatController>();
     }
 
     private void Update()
     {
-        UpdateMovementState();
+        bool isAttacking = _playerCombatController != null && _playerCombatController.IsAttackInProgress();
+
+        // Während Attack darf Movement den State NICHT überschreiben
+        if (!isAttacking)
+        {
+            UpdateMovementState();
+        }
+
+        // Gravity darf weiterlaufen
         HandleVerticalMovement();
-        HandleLateralMovement();
+
+        // Während Attack keine normale Movement-Logik,
+        // sonst kämpft CharacterController.Move gegen Root Motion
+        if (!isAttacking)
+        {
+            HandleLateralMovement();
+        }
+        else
+        {
+            HandleAttackVerticalMovementOnly();
+        }
     }
 
     private void UpdateMovementState()
     {
-        bool isMovementInput = _playerInputReader.MovementInput != Vector2.zero;
         bool isMovingLaterally = IsMovingLaterally();
         bool isSprinting = _playerInputReader.SprintToggledOn && isMovingLaterally;
         bool isRunning = !_playerInputReader.SprintToggledOn && isMovingLaterally && targetSpeed >= runSpeed;
@@ -64,19 +78,18 @@ public class PlayerController : MonoBehaviour
             isRunning   ? PlayerMovementState.Running :
             isWalking   ? PlayerMovementState.Walking :
             PlayerMovementState.Idling;
-        _playerState.SePlayerMovementState(lateralState);
+
+        _playerState.SetPlayerMovementState(lateralState);
         
-        // Control Airborn State
+        // Control Airborne State
         if (!isGrounded && _characterController.velocity.y > 0f)
         {
-            _playerState.SePlayerMovementState(PlayerMovementState.Jumping);
+            _playerState.SetPlayerMovementState(PlayerMovementState.Jumping);
         }
         else if (!isGrounded && _characterController.velocity.y < 0f)
         {
-            _playerState.SePlayerMovementState(PlayerMovementState.Falling);
+            _playerState.SetPlayerMovementState(PlayerMovementState.Falling);
         }
-        
-        
     }
 
     private void HandleVerticalMovement()
@@ -90,19 +103,30 @@ public class PlayerController : MonoBehaviour
 
         _verticalVelocity -= gravity * Time.deltaTime;
     }
+
+    private void HandleAttackVerticalMovementOnly()
+    {
+        // Root Motion bewegt X/Z über den Animator.
+        // Hier wenden wir nur Gravity/Y an, damit der CharacterController grounded bleibt.
+        Vector3 verticalMove = new Vector3(0f, _verticalVelocity, 0f);
+        _characterController.Move(verticalMove * Time.deltaTime);
+
+        // Während Attack soll der Blend langsam auf 0 gehen,
+        // damit deine Locomotion-Animation nach der Attack nicht "hängt".
+        CurrentSpeed = 0f;
+    }
     
     private void HandleLateralMovement()
     {
         bool isSprinting = _playerState.CurrentPlayerMovementState == PlayerMovementState.Sprinting;
-        bool isGrounded = _playerState.InGroundedState();
 
         float lateralAcceleration = isSprinting ? sprintAcceleration : runAcceleration;
         
-        
-        // Calculate movementDirection
         Vector3 cameraForwardXZ = new Vector3(_playerCamera.transform.forward.x, 0f, _playerCamera.transform.forward.z).normalized;
         Vector3 cameraRightXZ = new Vector3(_playerCamera.transform.right.x, 0f, _playerCamera.transform.right.z).normalized;
+
         Vector2 transformedInput = TransformedInput(_playerInputReader.MovementInput);
+
         Vector3 movementDirection = cameraRightXZ * transformedInput.x + cameraForwardXZ * transformedInput.y;
         Vector3 movementDelta = movementDirection * lateralAcceleration * Time.deltaTime;
         Vector3 newVelocity = _characterController.velocity + movementDelta;
@@ -117,18 +141,19 @@ public class PlayerController : MonoBehaviour
         }
         
         float clampLateralMagnitude = isSprinting ? sprintSpeed : targetSpeed;
-        // Add drag to player
+
         Vector3 currentDrag = newVelocity.normalized * drag * Time.deltaTime;
         newVelocity = (newVelocity.magnitude > drag * Time.deltaTime) ? newVelocity - currentDrag : Vector3.zero;
+
         newVelocity = Vector3.ClampMagnitude(newVelocity, clampLateralMagnitude);
+
         Vector3 lateralVelocity = new Vector3(newVelocity.x, 0f, newVelocity.z);
         CurrentSpeed = lateralVelocity.magnitude;
+
         newVelocity.y += _verticalVelocity;
         
-        // Move Character
         _characterController.Move(newVelocity * Time.deltaTime);
         
-        // Turn Character in movementDirection
         if (movementDirection.sqrMagnitude > 0.001f)
         {
             Quaternion targetRotation = Quaternion.LookRotation(movementDirection, Vector3.up);
@@ -159,5 +184,4 @@ public class PlayerController : MonoBehaviour
     {
         return _characterController.isGrounded;
     }
-    
 }

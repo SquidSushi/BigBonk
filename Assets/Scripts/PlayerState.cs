@@ -4,7 +4,7 @@ public class PlayerState : MonoBehaviour
 {
     [field: SerializeField] public PlayerMovementState CurrentPlayerMovementState { get; private set; } = PlayerMovementState.Idling;
 
-    public void SePlayerMovementState(PlayerMovementState playerMovementState)
+    public void SetPlayerMovementState(PlayerMovementState playerMovementState)
     {
         CurrentPlayerMovementState = playerMovementState;
     }
@@ -14,7 +14,8 @@ public class PlayerState : MonoBehaviour
         return CurrentPlayerMovementState == PlayerMovementState.Idling || 
                CurrentPlayerMovementState == PlayerMovementState.Walking || 
                CurrentPlayerMovementState == PlayerMovementState.Running || 
-               CurrentPlayerMovementState == PlayerMovementState.Sprinting;
+               CurrentPlayerMovementState == PlayerMovementState.Sprinting ||
+               CurrentPlayerMovementState == PlayerMovementState.Attack;
     }
     
 }
@@ -27,4 +28,5 @@ public enum PlayerMovementState
     Sprinting = 3,
     Jumping = 4,
     Falling = 5,
+    Attack = 6,
 }
