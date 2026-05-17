@@ -7,6 +7,7 @@ public class PlayerCombatController : MonoBehaviour
     private PlayerInputReader inputReader;
     private PlayerState playerState;
     private PlayerAnimation playerAnimation;
+    private WeaponHitbox weaponHitbox;
 
     [Header("Root Motion")]
     [SerializeField] private float rootMotionDisableDelay = 0.08f;
@@ -32,6 +33,8 @@ public class PlayerCombatController : MonoBehaviour
         inputReader = GetComponent<PlayerInputReader>();
         playerState = GetComponent<PlayerState>();
         playerAnimation = GetComponent<PlayerAnimation>();
+        if (weaponHitbox == null)
+            weaponHitbox = GetComponentInChildren<WeaponHitbox>();
     }
 
     private void Update()
@@ -44,6 +47,22 @@ public class PlayerCombatController : MonoBehaviour
         }
     }
 
+    public void EnableAttackHitbox()
+    {
+        if (weaponHitbox == null)
+            return;
+
+        weaponHitbox.EnableHitbox();
+    }
+
+    public void DisableAttackHitbox()
+    {
+        if (weaponHitbox == null)
+            return;
+
+        weaponHitbox.DisableHitbox();
+    }
+    
     private bool HandleAttackInput()
     {
         if (!inputReader.attackPressed)
