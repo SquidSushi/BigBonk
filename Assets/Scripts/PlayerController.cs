@@ -20,6 +20,7 @@ public class PlayerController : MonoBehaviour
     [Header("Attack Rotation")]
     public float attackTurnSpeed = 360f;
     public float maxAttackRotationBudget = 180f;
+    private int lastSeenAttackInstanceId;
     
     private float movingThreshold = 0.01f;
     private float targetSpeed;
@@ -51,8 +52,9 @@ public class PlayerController : MonoBehaviour
     {
         bool isAttacking = _playerCombatController != null && _playerCombatController.IsAttackInProgress();
 
-        if (isAttacking && !wasAttacking)
+        if (isAttacking && _playerCombatController.AttackInstanceId != lastSeenAttackInstanceId)
         {
+            lastSeenAttackInstanceId = _playerCombatController.AttackInstanceId;
             BeginAttackRotation();
         }
 

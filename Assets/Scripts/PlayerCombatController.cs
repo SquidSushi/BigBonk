@@ -20,6 +20,7 @@ public class PlayerCombatController : MonoBehaviour
     [SerializeField] private bool attackInProgress;
     [SerializeField] private bool allowAttacking;
     [SerializeField] private bool allowWalking;
+    public int AttackInstanceId { get; private set; }
 
     private float walkingCancelLockedUntil;
     private float ignoreEndEventsUntil;
@@ -97,6 +98,8 @@ public class PlayerCombatController : MonoBehaviour
 
     private void StartAttackCommon()
     {
+        AttackInstanceId++;
+
         allowAttacking = false;
         allowWalking = false;
 
