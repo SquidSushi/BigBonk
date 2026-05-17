@@ -13,6 +13,7 @@ public class PlayerAnimation : MonoBehaviour
     private static readonly int isGroundedHash = Animator.StringToHash("IsGrounded");
     private static readonly int isFallingHash = Animator.StringToHash("IsFalling");
     private static readonly int attackHash = Animator.StringToHash("Attack");
+    private static readonly int cancelAttackHash = Animator.StringToHash("CancelAttack");
 
     private float currentBlend;
 
@@ -88,8 +89,22 @@ public class PlayerAnimation : MonoBehaviour
         animator.SetTrigger(attackHash);
     }
 
+    public void CancelAttackToLocomotion()
+    {
+        animator.ResetTrigger(attackHash);
+        animator.SetTrigger(cancelAttackHash);
+    }
+    
     public void SetRootMotion(bool enabled)
     {
         animator.applyRootMotion = enabled;
+    }
+    
+    private static readonly int attackFinishedHash = Animator.StringToHash("AttackFinished");
+
+    public void FinishAttack()
+    {
+        animator.ResetTrigger(attackFinishedHash);
+        animator.SetTrigger(attackFinishedHash);
     }
 }
