@@ -13,11 +13,16 @@ public class PlayerCombatController : MonoBehaviour
 
     [Header("Cancel Settings")]
     [SerializeField] private float walkingCancelInputThreshold = 0.15f;
+    [SerializeField] private float walkingCancelLockoutAfterAttackStart = 0.15f;
+    [SerializeField] private float ignoreEndEventsAfterAttackStart = 0.08f;
 
     [Header("Debug")]
     [SerializeField] private bool attackInProgress;
     [SerializeField] private bool allowAttacking;
     [SerializeField] private bool allowWalking;
+
+    private float walkingCancelLockedUntil;
+    private float ignoreEndEventsUntil;
 
     private Coroutine disableRootMotionRoutine;
 
@@ -30,25 +35,33 @@ public class PlayerCombatController : MonoBehaviour
 
     private void Update()
     {
-        HandleAttackInput();
-        HandleWalkingCancelInput();
+        bool attackInputConsumed = HandleAttackInput();
+
+        if (!attackInputConsumed)
+        {
+            HandleWalkingCancelInput();
+        }
     }
 
-    private void HandleAttackInput()
+    private bool HandleAttackInput()
     {
         if (!inputReader.attackPressed)
-            return;
+            return false;
 
+        // Wenn Attack gedrückt wurde, soll in diesem Frame kein Walking-Cancel passieren.
         if (!attackInProgress)
         {
             StartAttack();
-            return;
+            return true;
         }
 
         if (allowAttacking)
         {
-            CancelIntoNextAttack();
+            StartNextAttack();
+            return true;
         }
+
+        return true;
     }
 
     private void HandleWalkingCancelInput()
@@ -57,6 +70,9 @@ public class PlayerCombatController : MonoBehaviour
             return;
 
         if (!allowWalking)
+            return;
+
+        if (Time.time < walkingCancelLockedUntil)
             return;
 
         if (inputReader.MovementInput.sqrMagnitude < walkingCancelInputThreshold * walkingCancelInputThreshold)
@@ -68,31 +84,26 @@ public class PlayerCombatController : MonoBehaviour
     private void StartAttack()
     {
         attackInProgress = true;
-        allowAttacking = false;
-        allowWalking = false;
 
-        if (disableRootMotionRoutine != null)
-        {
-            StopCoroutine(disableRootMotionRoutine);
-            disableRootMotionRoutine = null;
-        }
-
-        playerState.SetPlayerMovementState(PlayerMovementState.Attack);
-
-        playerAnimation.SetRootMotion(true);
-        playerAnimation.PlayAttack();
+        StartAttackCommon();
     }
 
-    private void CancelIntoNextAttack()
+    private void StartNextAttack()
+    {
+        // attackInProgress bleibt true.
+        // Wir starten nur die Attack-Animation neu.
+        StartAttackCommon();
+    }
+
+    private void StartAttackCommon()
     {
         allowAttacking = false;
         allowWalking = false;
 
-        if (disableRootMotionRoutine != null)
-        {
-            StopCoroutine(disableRootMotionRoutine);
-            disableRootMotionRoutine = null;
-        }
+        walkingCancelLockedUntil = Time.time + walkingCancelLockoutAfterAttackStart;
+        ignoreEndEventsUntil = Time.time + ignoreEndEventsAfterAttackStart;
+
+        StopDisableRootMotionRoutine();
 
         playerState.SetPlayerMovementState(PlayerMovementState.Attack);
 
@@ -126,12 +137,22 @@ public class PlayerCombatController : MonoBehaviour
         if (!attackInProgress)
             return;
 
+        // Verhindert, dass ein altes/blendendes Event direkt nach einem Attack-Restart
+        // Walking-Cancel wieder öffnet.
+        if (Time.time < walkingCancelLockedUntil)
+            return;
+
         allowWalking = true;
     }
 
     public void OnAttackAnimationEnd()
     {
         if (!attackInProgress)
+            return;
+
+        // Verhindert, dass ein altes End-Event von der vorherigen Attack
+        // die neue Attack sofort beendet.
+        if (Time.time < ignoreEndEventsUntil)
             return;
 
         EndAttack();
@@ -152,10 +173,18 @@ public class PlayerCombatController : MonoBehaviour
 
     private void StartDisableRootMotionAfterDelay()
     {
-        if (disableRootMotionRoutine != null)
-            StopCoroutine(disableRootMotionRoutine);
+        StopDisableRootMotionRoutine();
 
         disableRootMotionRoutine = StartCoroutine(DisableRootMotionAfterDelay());
+    }
+
+    private void StopDisableRootMotionRoutine()
+    {
+        if (disableRootMotionRoutine == null)
+            return;
+
+        StopCoroutine(disableRootMotionRoutine);
+        disableRootMotionRoutine = null;
     }
 
     private IEnumerator DisableRootMotionAfterDelay()
