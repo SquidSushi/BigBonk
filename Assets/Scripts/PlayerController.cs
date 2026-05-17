@@ -16,11 +16,18 @@ public class PlayerController : MonoBehaviour
     public float drag;
     public float turnSpeed;
     public float gravity;
+
+    [Header("Attack Rotation")]
+    public float attackTurnSpeed = 360f;
+    public float maxAttackRotationBudget = 180f;
     
     private float movingThreshold = 0.01f;
     private float targetSpeed;
     public float CurrentSpeed { get; private set; }
     private float _verticalVelocity;
+
+    private bool wasAttacking;
+    private float remainingAttackRotation;
     
     private PlayerInputReader _playerInputReader;
     private PlayerState _playerState;
@@ -44,25 +51,35 @@ public class PlayerController : MonoBehaviour
     {
         bool isAttacking = _playerCombatController != null && _playerCombatController.IsAttackInProgress();
 
-        // Während Attack darf Movement den State NICHT überschreiben
+        if (isAttacking && !wasAttacking)
+        {
+            BeginAttackRotation();
+        }
+
+        // Während Attack darf Movement den State NICHT überschreiben.
         if (!isAttacking)
         {
             UpdateMovementState();
         }
 
-        // Gravity darf weiterlaufen
+        // Gravity darf weiterlaufen.
         HandleVerticalMovement();
 
-        // Während Attack keine normale Movement-Logik,
-        // sonst kämpft CharacterController.Move gegen Root Motion
         if (!isAttacking)
         {
             HandleLateralMovement();
         }
         else
         {
+            // Während Attack keine freie Bewegung.
+            // Root Motion bewegt X/Z.
             HandleAttackVerticalMovementOnly();
+
+            // Aber Rotation während Attack erlauben.
+            HandleAttackRotation();
         }
+
+        wasAttacking = isAttacking;
     }
 
     private void UpdateMovementState()
@@ -96,7 +113,7 @@ public class PlayerController : MonoBehaviour
     {
         bool isGrounded = _playerState.InGroundedState();
         
-        if (isGrounded && _verticalVelocity < 0)
+        if (isGrounded && _verticalVelocity < 0f)
         {
             _verticalVelocity = 0f;
         }
@@ -107,13 +124,70 @@ public class PlayerController : MonoBehaviour
     private void HandleAttackVerticalMovementOnly()
     {
         // Root Motion bewegt X/Z über den Animator.
-        // Hier wenden wir nur Gravity/Y an, damit der CharacterController grounded bleibt.
+        // Hier wenden wir nur Y/Gravity an, damit der CharacterController grounded bleibt.
         Vector3 verticalMove = new Vector3(0f, _verticalVelocity, 0f);
         _characterController.Move(verticalMove * Time.deltaTime);
 
-        // Während Attack soll der Blend langsam auf 0 gehen,
-        // damit deine Locomotion-Animation nach der Attack nicht "hängt".
+        // Während Attack soll der Locomotion-Blend nicht weiterlaufen.
         CurrentSpeed = 0f;
+    }
+
+    private void BeginAttackRotation()
+    {
+        remainingAttackRotation = maxAttackRotationBudget;
+    }
+
+    private void HandleAttackRotation()
+    {
+        if (remainingAttackRotation <= 0f)
+            return;
+
+        Vector2 transformedInput = TransformedInput(_playerInputReader.MovementInput);
+
+        if (transformedInput.sqrMagnitude < 0.001f)
+            return;
+
+        Vector3 cameraForwardXZ = new Vector3(
+            _playerCamera.transform.forward.x,
+            0f,
+            _playerCamera.transform.forward.z
+        ).normalized;
+
+        Vector3 cameraRightXZ = new Vector3(
+            _playerCamera.transform.right.x,
+            0f,
+            _playerCamera.transform.right.z
+        ).normalized;
+
+        Vector3 desiredDirection =
+            cameraRightXZ * transformedInput.x +
+            cameraForwardXZ * transformedInput.y;
+
+        if (desiredDirection.sqrMagnitude < 0.001f)
+            return;
+
+        Quaternion desiredRotation = Quaternion.LookRotation(desiredDirection, Vector3.up);
+
+        float angleToTarget = Quaternion.Angle(transform.rotation, desiredRotation);
+
+        if (angleToTarget <= 0.01f)
+            return;
+
+        float rotationThisFrame = attackTurnSpeed * Time.deltaTime;
+
+        float allowedRotation = Mathf.Min(
+            rotationThisFrame,
+            angleToTarget,
+            remainingAttackRotation
+        );
+
+        transform.rotation = Quaternion.RotateTowards(
+            transform.rotation,
+            desiredRotation,
+            allowedRotation
+        );
+
+        remainingAttackRotation -= allowedRotation;
     }
     
     private void HandleLateralMovement()
@@ -122,12 +196,24 @@ public class PlayerController : MonoBehaviour
 
         float lateralAcceleration = isSprinting ? sprintAcceleration : runAcceleration;
         
-        Vector3 cameraForwardXZ = new Vector3(_playerCamera.transform.forward.x, 0f, _playerCamera.transform.forward.z).normalized;
-        Vector3 cameraRightXZ = new Vector3(_playerCamera.transform.right.x, 0f, _playerCamera.transform.right.z).normalized;
+        Vector3 cameraForwardXZ = new Vector3(
+            _playerCamera.transform.forward.x,
+            0f,
+            _playerCamera.transform.forward.z
+        ).normalized;
+
+        Vector3 cameraRightXZ = new Vector3(
+            _playerCamera.transform.right.x,
+            0f,
+            _playerCamera.transform.right.z
+        ).normalized;
 
         Vector2 transformedInput = TransformedInput(_playerInputReader.MovementInput);
 
-        Vector3 movementDirection = cameraRightXZ * transformedInput.x + cameraForwardXZ * transformedInput.y;
+        Vector3 movementDirection =
+            cameraRightXZ * transformedInput.x +
+            cameraForwardXZ * transformedInput.y;
+
         Vector3 movementDelta = movementDirection * lateralAcceleration * Time.deltaTime;
         Vector3 newVelocity = _characterController.velocity + movementDelta;
 
@@ -143,7 +229,9 @@ public class PlayerController : MonoBehaviour
         float clampLateralMagnitude = isSprinting ? sprintSpeed : targetSpeed;
 
         Vector3 currentDrag = newVelocity.normalized * drag * Time.deltaTime;
-        newVelocity = (newVelocity.magnitude > drag * Time.deltaTime) ? newVelocity - currentDrag : Vector3.zero;
+        newVelocity = (newVelocity.magnitude > drag * Time.deltaTime) 
+            ? newVelocity - currentDrag 
+            : Vector3.zero;
 
         newVelocity = Vector3.ClampMagnitude(newVelocity, clampLateralMagnitude);
 
@@ -176,7 +264,12 @@ public class PlayerController : MonoBehaviour
 
     private bool IsMovingLaterally()
     {
-        Vector3 lateralVelocity = new Vector3(_characterController.velocity.x, 0f, _characterController.velocity.z);
+        Vector3 lateralVelocity = new Vector3(
+            _characterController.velocity.x,
+            0f,
+            _characterController.velocity.z
+        );
+
         return lateralVelocity.magnitude > movingThreshold;
     }
 

@@ -651,7 +651,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6c428549ef8c8a446b64183448cedf91, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
-  attackDuration: 5
+  attackInProgress: 0
 --- !u!1 &934707018
 GameObject:
   m_ObjectHideFlags: 0
@@ -1050,6 +1050,18 @@ PrefabInstance:
     - target: {fileID: 975422624012187956, guid: 73964f7df13f7654386cd8cd51282a78, type: 3}
       propertyPath: m_Name
       value: Player
+      objectReference: {fileID: 0}
+    - target: {fileID: 1677818531705935048, guid: 73964f7df13f7654386cd8cd51282a78, type: 3}
+      propertyPath: m_ApplyRootMotion
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4519835721797427174, guid: 73964f7df13f7654386cd8cd51282a78, type: 3}
+      propertyPath: attackTurnSpeed
+      value: 300
+      objectReference: {fileID: 0}
+    - target: {fileID: 4519835721797427174, guid: 73964f7df13f7654386cd8cd51282a78, type: 3}
+      propertyPath: maxAttackRotationAngle
+      value: 180
       objectReference: {fileID: 0}
     - target: {fileID: 5406081347212514150, guid: 73964f7df13f7654386cd8cd51282a78, type: 3}
       propertyPath: m_LocalPosition.x

@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 
 public class PlayerCombatController : MonoBehaviour
@@ -8,11 +7,7 @@ public class PlayerCombatController : MonoBehaviour
     private PlayerState playerState;
     private PlayerAnimation playerAnimation;
 
-    [Header("Combat")]
-    [SerializeField] private float attackDuration = 1f;
-
-    private float attackTimer;
-    private bool attackInProgress;
+    [SerializeField] private bool attackInProgress;
 
     private void Awake()
     {
@@ -24,7 +19,6 @@ public class PlayerCombatController : MonoBehaviour
     private void Update()
     {
         HandleAttackInput();
-        UpdateAttackState();
     }
 
     private void HandleAttackInput()
@@ -37,7 +31,10 @@ public class PlayerCombatController : MonoBehaviour
 
     private void TryAttack()
     {
-        if (playerState.CurrentPlayerMovementState == PlayerMovementState.Attack)
+        if (attackInProgress)
+            return;
+
+        if (!playerState.InGroundedState())
             return;
 
         StartAttack();
@@ -46,39 +43,32 @@ public class PlayerCombatController : MonoBehaviour
     private void StartAttack()
     {
         attackInProgress = true;
-        attackTimer = attackDuration;
-        
+
         playerState.SetPlayerMovementState(PlayerMovementState.Attack);
-        
+
         playerAnimation.SetRootMotion(true);
         playerAnimation.PlayAttack();
     }
 
-    private void UpdateAttackState()
+    public void OnAttackAnimationEnd()
     {
+        Debug.Log("Animation Event: Attack End\n" + System.Environment.StackTrace);
+
         if (!attackInProgress)
-        {
             return;
-        }
 
-        attackTimer -= Time.deltaTime;
-
-        if (attackTimer <= 0f)
-        {
-            EndAttack();
-        }
+        EndAttack();
     }
 
     private void EndAttack()
-
     {
         attackInProgress = false;
-        
+
         playerAnimation.SetRootMotion(false);
+
         playerState.SetPlayerMovementState(PlayerMovementState.Idling);
-        
     }
-    
+
     public bool IsAttackInProgress()
     {
         return attackInProgress;
