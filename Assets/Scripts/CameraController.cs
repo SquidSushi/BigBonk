@@ -1,16 +1,20 @@
-using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 public class CameraController : MonoBehaviour
 {
     [Header("Components")]
-    private Camera _playerCamera;
+    [SerializeField] private Transform cameraRotationTarget;
 
     [Header("Camera Settings")]
     public float mouseLookSens;
     public float gamepadLookSens;
-    public float lookLimitV;
+
+    [Tooltip("Wie weit man von der Default-Höhe hoch/runter schauen darf.")]
+    public float lookLimitV = 60f;
+
+    [Tooltip("Default Pitch der Kamera. Positiv/negativ testen, je nach Setup.")]
+    public float defaultPitch;
 
     [Header("Auto Rotate")]
     public float autoRotateSpeed = 2f;
@@ -27,7 +31,7 @@ public class CameraController : MonoBehaviour
 
     private float lastManualLookTime;
 
-    private Vector2 _cameraRotation = Vector2.zero;
+    private Vector2 _cameraRotation;
     private Vector2 currentLookVelocity = Vector2.zero;
 
     private PlayerInputReader _playerInputReader;
@@ -37,17 +41,21 @@ public class CameraController : MonoBehaviour
     {
         lookAction = InputSystem.actions.FindAction("Look");
 
-        if (_playerCamera == null)
-            _playerCamera = GetComponentInChildren<Camera>();
-
         _playerInputReader = GetComponent<PlayerInputReader>();
+
+        if (cameraRotationTarget == null)
+        {
+            cameraRotationTarget = transform;
+        }
+
+        _cameraRotation = new Vector2(
+            cameraRotationTarget.eulerAngles.y,
+            defaultPitch
+        );
     }
 
     private void LateUpdate()
     {
-        // =========================
-        // RAW INPUT
-        // =========================
         Vector2 rawLookInput = lookAction.ReadValue<Vector2>();
 
         bool hasLookInput =
@@ -59,9 +67,6 @@ public class CameraController : MonoBehaviour
             lastManualLookTime = Time.time;
         }
 
-        // =========================
-        // SENSITIVITY
-        // =========================
         InputDevice device = lookAction.activeControl?.device;
 
         float sensitivity =
@@ -71,9 +76,6 @@ public class CameraController : MonoBehaviour
 
         Vector2 targetLookInput = rawLookInput * sensitivity;
 
-        // =========================
-        // SMOOTH LOOK
-        // =========================
         float smoothFactor = 1f - Mathf.Exp(-lookSmoothing * Time.deltaTime);
 
         currentLookVelocity = Vector2.Lerp(
@@ -82,20 +84,19 @@ public class CameraController : MonoBehaviour
             smoothFactor
         );
 
-        // =========================
-        // MANUAL CAMERA ROTATION
-        // =========================
+        // Horizontal rotation
         _cameraRotation.x += currentLookVelocity.x;
+
+        // Vertical rotation around default pitch
+        float minPitch = defaultPitch - lookLimitV;
+        float maxPitch = defaultPitch + lookLimitV;
 
         _cameraRotation.y = Mathf.Clamp(
             _cameraRotation.y - currentLookVelocity.y,
-            -lookLimitV,
-            lookLimitV
+            minPitch,
+            maxPitch
         );
 
-        // =========================
-        // AUTO ROTATE HORIZONTAL
-        // =========================
         bool allowAutoRotate =
             Time.time > lastManualLookTime + autoRotateDelay;
 
@@ -108,10 +109,8 @@ public class CameraController : MonoBehaviour
         {
             float horizontalInfluence = movementInput.x;
 
-// DEADZONE
             if (Mathf.Abs(horizontalInfluence) > autoRotateDeadzone)
             {
-                // Analog-Stick Skalierung nach Deadzone
                 float normalizedInfluence =
                     (Mathf.Abs(horizontalInfluence) - autoRotateDeadzone) /
                     (1f - autoRotateDeadzone);
@@ -125,9 +124,7 @@ public class CameraController : MonoBehaviour
             }
         }
 
-        // =========================
-        // AUTO RESET VERTICAL
-        // =========================
+        // Reset nicht mehr zu 0, sondern zu defaultPitch
         bool allowVerticalReset =
             Time.time > lastManualLookTime + verticalResetDelay;
 
@@ -135,15 +132,12 @@ public class CameraController : MonoBehaviour
         {
             _cameraRotation.y = Mathf.Lerp(
                 _cameraRotation.y,
-                0f,
+                defaultPitch,
                 verticalResetSpeed * Time.deltaTime
             );
         }
 
-        // =========================
-        // APPLY ROTATION
-        // =========================
-        _playerCamera.transform.rotation = Quaternion.Euler(
+        cameraRotationTarget.rotation = Quaternion.Euler(
             _cameraRotation.y,
             _cameraRotation.x,
             0f
