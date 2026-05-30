@@ -22,6 +22,11 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: Material.004
+    second: {fileID: 2100000, guid: bc563c922c28b2444a25c320a38dc5e0, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: Ripley_Sword
     second: {fileID: 2100000, guid: 9b9e0cb10e68d5d4dab3436a017a8214, type: 2}
   - first:
