@@ -33,6 +33,7 @@ public class PlayerController : MonoBehaviour
     private float targetSpeed;
 
     public float CurrentSpeed { get; private set; }
+    public Vector3 CurrentMovementDirection { get; private set; }
 
     private float _verticalVelocity;
     private float remainingAttackRotation;
@@ -143,6 +144,7 @@ public class PlayerController : MonoBehaviour
 
         // Während Attack soll der Locomotion-Blend nicht weiterlaufen.
         CurrentSpeed = 0f;
+        CurrentMovementDirection = Vector3.zero;
     }
 
     private void BeginAttackRotation()
@@ -255,6 +257,11 @@ public class PlayerController : MonoBehaviour
         Vector3 movementDirection =
             cameraRightXZ * transformedInput.x +
             cameraForwardXZ * transformedInput.y;
+        
+        CurrentMovementDirection =
+            movementDirection.sqrMagnitude > 0.001f
+                ? movementDirection.normalized
+                : Vector3.zero;
 
         Vector3 movementDelta =
             movementDirection *

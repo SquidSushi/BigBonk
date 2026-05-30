@@ -90,6 +90,7 @@ MonoBehaviour:
   turnSpeed: 10
   gravity: 1
   lockOnTurnSpeed: 720
+  lockOnSprintTurnSpeed: 720
   attackTurnSpeed: 300
   maxAttackRotationBudget: 180
 --- !u!114 &2463157896669090562
@@ -222,9 +223,9 @@ MonoBehaviour:
   targetLayers:
     serializedVersion: 2
     m_Bits: 128
-  lockOnRadius: 15
+  lockOnRadius: 26
   maxLockOnAngle: 70
-  unlockDistance: 18
+  unlockDistance: 30
   targetValidationInterval: 0.1
   requireLineOfSight: 0
   obstructionLayers:
