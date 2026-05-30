@@ -7,14 +7,27 @@ public class CameraController : MonoBehaviour
     [SerializeField] private Transform cameraRotationTarget;
 
     [Header("Camera Settings")]
-    public float mouseLookSens;
-    public float gamepadLookSens;
+    public float mouseLookSens = 1f;
+    public float gamepadLookSens = 1f;
 
     [Tooltip("Wie weit man von der Default-Höhe hoch/runter schauen darf.")]
     public float lookLimitV = 60f;
 
     [Tooltip("Default Pitch der Kamera. Positiv/negativ testen, je nach Setup.")]
-    public float defaultPitch;
+    public float defaultPitch = 0f;
+
+    [Header("Gamepad Look Deadzones")]
+    [Tooltip("Normale Deadzone pro Achse. Entfernt kleine X/Y-Reste vom Stick.")]
+    public float gamepadLookAxisDeadzone = 0.12f;
+
+    [Tooltip("Wenn man stark nach oben/unten schaut, wird kleiner X-Input ignoriert.")]
+    public float verticalOnlyYThreshold = 0.65f;
+
+    [Tooltip("X-Input unter diesem Wert wird ignoriert, solange der Stick primär vertikal gedrückt wird.")]
+    public float verticalOnlyXDeadzone = 0.22f;
+
+    [Tooltip("Wenn eine Achse durch Deadzone auf 0 gesetzt wird, wird auch alte geglättete Bewegung dieser Achse gelöscht.")]
+    public bool killSmoothedVelocityOnDeadzone = true;
 
     [Header("Auto Rotate")]
     public float autoRotateSpeed = 2f;
@@ -41,10 +54,25 @@ public class CameraController : MonoBehaviour
     {
         lookAction = InputSystem.actions.FindAction("Look");
 
+        if (lookAction == null)
+        {
+            Debug.LogError("CameraController: InputAction 'Look' wurde nicht gefunden.");
+            enabled = false;
+            return;
+        }
+
         _playerInputReader = GetComponent<PlayerInputReader>();
+
+        if (_playerInputReader == null)
+        {
+            Debug.LogError("CameraController: PlayerInputReader wurde auf diesem GameObject nicht gefunden.");
+            enabled = false;
+            return;
+        }
 
         if (cameraRotationTarget == null)
         {
+            Debug.LogWarning("CameraController: cameraRotationTarget ist nicht gesetzt. Fallback auf transform. Besser: Kamera-Pivot/Child zuweisen.");
             cameraRotationTarget = transform;
         }
 
@@ -52,11 +80,21 @@ public class CameraController : MonoBehaviour
             cameraRotationTarget.eulerAngles.y,
             defaultPitch
         );
+
+        lastManualLookTime = Time.time;
     }
 
     private void LateUpdate()
     {
         Vector2 rawLookInput = lookAction.ReadValue<Vector2>();
+
+        InputDevice device = lookAction.activeControl?.device;
+        bool isGamepad = device is Gamepad;
+
+        if (isGamepad)
+        {
+            ApplyGamepadLookDeadzone(ref rawLookInput);
+        }
 
         bool hasLookInput =
             rawLookInput.sqrMagnitude >
@@ -67,12 +105,7 @@ public class CameraController : MonoBehaviour
             lastManualLookTime = Time.time;
         }
 
-        InputDevice device = lookAction.activeControl?.device;
-
-        float sensitivity =
-            device is Gamepad
-                ? gamepadLookSens
-                : mouseLookSens;
+        float sensitivity = isGamepad ? gamepadLookSens : mouseLookSens;
 
         Vector2 targetLookInput = rawLookInput * sensitivity;
 
@@ -84,10 +117,10 @@ public class CameraController : MonoBehaviour
             smoothFactor
         );
 
-        // Horizontal rotation
+        // Horizontal rotation / Yaw
         _cameraRotation.x += currentLookVelocity.x;
 
-        // Vertical rotation around default pitch
+        // Vertical rotation / Pitch
         float minPitch = defaultPitch - lookLimitV;
         float maxPitch = defaultPitch + lookLimitV;
 
@@ -97,6 +130,64 @@ public class CameraController : MonoBehaviour
             maxPitch
         );
 
+        HandleAutoRotate();
+        HandleVerticalReset();
+
+        cameraRotationTarget.rotation = Quaternion.Euler(
+            _cameraRotation.y,
+            _cameraRotation.x,
+            0f
+        );
+    }
+
+    private void ApplyGamepadLookDeadzone(ref Vector2 rawLookInput)
+    {
+        bool xWasDeadzoned = false;
+        bool yWasDeadzoned = false;
+
+        // Normale Achsen-Deadzone.
+        // Wichtig: Das ist NICHT das Gleiche wie Unitys Stick-Deadzone.
+        // Hier wird X separat geprüft, auch wenn Y stark gedrückt ist.
+        if (Mathf.Abs(rawLookInput.x) < gamepadLookAxisDeadzone)
+        {
+            rawLookInput.x = 0f;
+            xWasDeadzoned = true;
+        }
+
+        if (Mathf.Abs(rawLookInput.y) < gamepadLookAxisDeadzone)
+        {
+            rawLookInput.y = 0f;
+            yWasDeadzoned = true;
+        }
+
+        // Extra-Fix für dein konkretes Problem:
+        // Wenn der Stick hauptsächlich nach oben/unten gedrückt wird,
+        // ignorieren wir kleine horizontale Abweichungen stärker.
+        bool isMostlyVertical =
+            Mathf.Abs(rawLookInput.y) > verticalOnlyYThreshold &&
+            Mathf.Abs(rawLookInput.x) < verticalOnlyXDeadzone;
+
+        if (isMostlyVertical)
+        {
+            rawLookInput.x = 0f;
+            xWasDeadzoned = true;
+        }
+
+        // Alte geglättete Reste entfernen.
+        // Sonst kann currentLookVelocity.x weiter Yaw erzeugen,
+        // obwohl rawLookInput.x schon 0 ist.
+        if (killSmoothedVelocityOnDeadzone)
+        {
+            if (xWasDeadzoned)
+                currentLookVelocity.x = 0f;
+
+            if (yWasDeadzoned)
+                currentLookVelocity.y = 0f;
+        }
+    }
+
+    private void HandleAutoRotate()
+    {
         bool allowAutoRotate =
             Time.time > lastManualLookTime + autoRotateDelay;
 
@@ -105,42 +196,38 @@ public class CameraController : MonoBehaviour
         bool hasMovementInput =
             movementInput.sqrMagnitude > 0.01f;
 
-        if (allowAutoRotate && hasMovementInput)
-        {
-            float horizontalInfluence = movementInput.x;
+        if (!allowAutoRotate || !hasMovementInput)
+            return;
 
-            if (Mathf.Abs(horizontalInfluence) > autoRotateDeadzone)
-            {
-                float normalizedInfluence =
-                    (Mathf.Abs(horizontalInfluence) - autoRotateDeadzone) /
-                    (1f - autoRotateDeadzone);
+        float horizontalInfluence = movementInput.x;
 
-                normalizedInfluence *= Mathf.Sign(horizontalInfluence);
+        if (Mathf.Abs(horizontalInfluence) <= autoRotateDeadzone)
+            return;
 
-                _cameraRotation.x +=
-                    normalizedInfluence *
-                    autoRotateSpeed *
-                    Time.deltaTime;
-            }
-        }
+        float normalizedInfluence =
+            (Mathf.Abs(horizontalInfluence) - autoRotateDeadzone) /
+            (1f - autoRotateDeadzone);
 
-        // Reset nicht mehr zu 0, sondern zu defaultPitch
+        normalizedInfluence *= Mathf.Sign(horizontalInfluence);
+
+        _cameraRotation.x +=
+            normalizedInfluence *
+            autoRotateSpeed *
+            Time.deltaTime;
+    }
+
+    private void HandleVerticalReset()
+    {
         bool allowVerticalReset =
             Time.time > lastManualLookTime + verticalResetDelay;
 
-        if (allowVerticalReset)
-        {
-            _cameraRotation.y = Mathf.Lerp(
-                _cameraRotation.y,
-                defaultPitch,
-                verticalResetSpeed * Time.deltaTime
-            );
-        }
+        if (!allowVerticalReset)
+            return;
 
-        cameraRotationTarget.rotation = Quaternion.Euler(
+        _cameraRotation.y = Mathf.Lerp(
             _cameraRotation.y,
-            _cameraRotation.x,
-            0f
+            defaultPitch,
+            verticalResetSpeed * Time.deltaTime
         );
     }
 }
