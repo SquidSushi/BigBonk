@@ -20,6 +20,8 @@ public class PlayerController : MonoBehaviour
     [Header("Lock On Movement")]
     [Tooltip("Wie schnell sich der Player im Lock-on zum Target dreht. Wert ist Grad pro Sekunde.")]
     public float lockOnTurnSpeed = 720f;
+    [Tooltip("Wie schnell sich der Player beim Sprinten im Lock-on wieder in Laufrichtung dreht.")]
+    public float lockOnSprintTurnSpeed = 720f;
 
     [Header("Attack Rotation")]
     public float attackTurnSpeed = 360f;
@@ -302,18 +304,36 @@ public class PlayerController : MonoBehaviour
         
         _characterController.Move(newVelocity * Time.deltaTime);
 
-        HandleCharacterRotation(movementDirection);
+        HandleCharacterRotation(movementDirection, isSprinting);
     }
 
-    private void HandleCharacterRotation(Vector3 movementDirection)
+    private void HandleCharacterRotation(Vector3 movementDirection, bool isSprinting)
     {
+        bool hasMovementDirection = movementDirection.sqrMagnitude > 0.001f;
+
+        // Lock-on + Sprint:
+        // Character schaut wieder in Laufrichtung.
+        if (HasValidLockOnTarget() && isSprinting && hasMovementDirection)
+        {
+            RotateTowardsMovementDirection(
+                movementDirection,
+                lockOnSprintTurnSpeed
+            );
+
+            return;
+        }
+
+        // Lock-on ohne Sprint:
+        // Character schaut zum Gegner.
         if (HasValidLockOnTarget())
         {
             RotateTowardsLockOnTarget(lockOnTurnSpeed);
             return;
         }
 
-        if (movementDirection.sqrMagnitude > 0.001f)
+        // Free-Look:
+        // Originalverhalten beibehalten.
+        if (hasMovementDirection)
         {
             Quaternion targetRotation = Quaternion.LookRotation(
                 movementDirection,
@@ -326,6 +346,25 @@ public class PlayerController : MonoBehaviour
                 turnSpeed * Time.deltaTime
             );
         }
+    }
+    
+    private void RotateTowardsMovementDirection(Vector3 movementDirection, float rotationSpeed)
+    {
+        movementDirection.y = 0f;
+
+        if (movementDirection.sqrMagnitude < 0.001f)
+            return;
+
+        Quaternion targetRotation = Quaternion.LookRotation(
+            movementDirection.normalized,
+            Vector3.up
+        );
+
+        transform.rotation = Quaternion.RotateTowards(
+            transform.rotation,
+            targetRotation,
+            rotationSpeed * Time.deltaTime
+        );
     }
 
     private void RotateTowardsLockOnTarget(float rotationSpeed)
