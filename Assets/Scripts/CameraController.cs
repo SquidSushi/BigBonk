@@ -5,6 +5,7 @@ public class CameraController : MonoBehaviour
 {
     [Header("Components")]
     [SerializeField] private Transform cameraRotationTarget;
+    [SerializeField] private PlayerLockOnController playerLockOnController;
 
     [Header("Camera Settings")]
     public float mouseLookSens = 1f;
@@ -28,6 +29,15 @@ public class CameraController : MonoBehaviour
 
     [Tooltip("Wenn eine Achse durch Deadzone auf 0 gesetzt wird, wird auch alte geglättete Bewegung dieser Achse gelöscht.")]
     public bool killSmoothedVelocityOnDeadzone = true;
+
+    [Header("Lock On Camera")]
+    [SerializeField] private bool enableLockOnCamera = true;
+
+    [Tooltip("Wie schnell die Kamera im Lock-on zum Target rotiert.")]
+    [SerializeField] private float lockOnRotationSpeed = 12f;
+
+    [Tooltip("Zusätzlicher Pitch-Offset im Lock-on. Positiv schaut meist tiefer, negativ höher.")]
+    [SerializeField] private float lockOnPitchOffset = 0f;
 
     [Header("Auto Rotate")]
     public float autoRotateSpeed = 2f;
@@ -70,6 +80,11 @@ public class CameraController : MonoBehaviour
             return;
         }
 
+        if (playerLockOnController == null)
+        {
+            playerLockOnController = GetComponent<PlayerLockOnController>();
+        }
+
         if (cameraRotationTarget == null)
         {
             Debug.LogWarning("CameraController: cameraRotationTarget ist nicht gesetzt. Fallback auf transform. Besser: Kamera-Pivot/Child zuweisen.");
@@ -85,6 +100,24 @@ public class CameraController : MonoBehaviour
     }
 
     private void LateUpdate()
+    {
+        bool shouldUseLockOnCamera =
+            enableLockOnCamera &&
+            playerLockOnController != null &&
+            playerLockOnController.IsLockedOn &&
+            playerLockOnController.CurrentTarget != null;
+
+        if (shouldUseLockOnCamera)
+        {
+            HandleLockOnCamera();
+        }
+        else
+        {
+            HandleFreeLookCamera();
+        }
+    }
+
+    private void HandleFreeLookCamera()
     {
         Vector2 rawLookInput = lookAction.ReadValue<Vector2>();
 
@@ -133,6 +166,70 @@ public class CameraController : MonoBehaviour
         HandleAutoRotate();
         HandleVerticalReset();
 
+        ApplyCameraRotation();
+    }
+
+    private void HandleLockOnCamera()
+    {
+        LockOnTarget currentTarget = playerLockOnController.CurrentTarget;
+
+        if (currentTarget == null)
+            return;
+
+        // Während Lock-on soll kein alter Free-Look-Smoothing-Rest weiterwirken.
+        currentLookVelocity = Vector2.zero;
+
+        // Dadurch startet Auto-Rotate/Vertical-Reset nach Unlock nicht sofort.
+        lastManualLookTime = Time.time;
+
+        Vector3 pivotPosition = cameraRotationTarget.position;
+        Vector3 targetPosition = currentTarget.AimPosition;
+
+        Vector3 directionToTarget = targetPosition - pivotPosition;
+
+        if (directionToTarget.sqrMagnitude < 0.001f)
+            return;
+
+        Quaternion desiredRotation = Quaternion.LookRotation(
+            directionToTarget.normalized,
+            Vector3.up
+        );
+
+        Vector3 desiredEuler = desiredRotation.eulerAngles;
+
+        float desiredYaw = desiredEuler.y;
+
+        float desiredPitch = NormalizeAngle(desiredEuler.x);
+        desiredPitch += lockOnPitchOffset;
+
+        float minPitch = defaultPitch - lookLimitV;
+        float maxPitch = defaultPitch + lookLimitV;
+
+        desiredPitch = Mathf.Clamp(
+            desiredPitch,
+            minPitch,
+            maxPitch
+        );
+
+        float smoothFactor = 1f - Mathf.Exp(-lockOnRotationSpeed * Time.deltaTime);
+
+        _cameraRotation.x = Mathf.LerpAngle(
+            _cameraRotation.x,
+            desiredYaw,
+            smoothFactor
+        );
+
+        _cameraRotation.y = Mathf.Lerp(
+            _cameraRotation.y,
+            desiredPitch,
+            smoothFactor
+        );
+
+        ApplyCameraRotation();
+    }
+
+    private void ApplyCameraRotation()
+    {
         cameraRotationTarget.rotation = Quaternion.Euler(
             _cameraRotation.y,
             _cameraRotation.x,
@@ -145,9 +242,6 @@ public class CameraController : MonoBehaviour
         bool xWasDeadzoned = false;
         bool yWasDeadzoned = false;
 
-        // Normale Achsen-Deadzone.
-        // Wichtig: Das ist NICHT das Gleiche wie Unitys Stick-Deadzone.
-        // Hier wird X separat geprüft, auch wenn Y stark gedrückt ist.
         if (Mathf.Abs(rawLookInput.x) < gamepadLookAxisDeadzone)
         {
             rawLookInput.x = 0f;
@@ -160,9 +254,6 @@ public class CameraController : MonoBehaviour
             yWasDeadzoned = true;
         }
 
-        // Extra-Fix für dein konkretes Problem:
-        // Wenn der Stick hauptsächlich nach oben/unten gedrückt wird,
-        // ignorieren wir kleine horizontale Abweichungen stärker.
         bool isMostlyVertical =
             Mathf.Abs(rawLookInput.y) > verticalOnlyYThreshold &&
             Mathf.Abs(rawLookInput.x) < verticalOnlyXDeadzone;
@@ -173,9 +264,6 @@ public class CameraController : MonoBehaviour
             xWasDeadzoned = true;
         }
 
-        // Alte geglättete Reste entfernen.
-        // Sonst kann currentLookVelocity.x weiter Yaw erzeugen,
-        // obwohl rawLookInput.x schon 0 ist.
         if (killSmoothedVelocityOnDeadzone)
         {
             if (xWasDeadzoned)
@@ -229,5 +317,16 @@ public class CameraController : MonoBehaviour
             defaultPitch,
             verticalResetSpeed * Time.deltaTime
         );
+    }
+
+    private float NormalizeAngle(float angle)
+    {
+        while (angle > 180f)
+            angle -= 360f;
+
+        while (angle < -180f)
+            angle += 360f;
+
+        return angle;
     }
 }
