@@ -7,8 +7,9 @@ public class PlayerAnimation : MonoBehaviour
 
     [Header("Lock On Animation")]
     [SerializeField] private float lockOnDirectionBlendSpeed = 10f;
-    [SerializeField] private float lockOnDirectionThreshold = 0.2f;
-
+    [Tooltip("Kleine Stick-Werte unter diesem Wert werden für Lock-on-Animationen ignoriert.")]
+    [SerializeField] private float lockOnAnimationInputDeadzone = 0.15f;
+    
     private PlayerState _playerState;
     private PlayerInputReader input;
     private PlayerController _playerController;
@@ -59,6 +60,22 @@ public class PlayerAnimation : MonoBehaviour
         UpdateMovementBlend();
     }
 
+    private float ApplyAnimationDeadzone(float value, float deadzone)
+    {
+        float absValue = Mathf.Abs(value);
+
+        if (absValue < deadzone)
+            return 0f;
+
+        // Skaliert den Bereich nach der Deadzone wieder auf 0..1.
+        // Beispiel: deadzone 0.15
+        // Input 0.15 -> 0
+        // Input 1.00 -> 1
+        float normalizedValue = Mathf.InverseLerp(deadzone, 1f, absValue);
+
+        return normalizedValue * Mathf.Sign(value);
+    }
+    
     private void UpdateMovementBlend()
     {
         UpdateNormalMovementBlend();
@@ -110,54 +127,30 @@ public class PlayerAnimation : MonoBehaviour
         bool isGrounded = _playerState.InGroundedState();
         bool isAttacking = _playerState.CurrentPlayerMovementState == PlayerMovementState.Attack;
 
-        Vector3 worldMoveDirection = _playerController.CurrentMovementDirection;
-
-        Vector3 localMoveDirection = Vector3.zero;
-
-        if (worldMoveDirection.sqrMagnitude > 0.001f)
-        {
-            localMoveDirection = transform.InverseTransformDirection(worldMoveDirection);
-        }
-
-        float absX = Mathf.Abs(localMoveDirection.x);
-        float z = localMoveDirection.z;
-
-        bool hasSideInput = absX > lockOnDirectionThreshold;
-        bool hasBackwardInput = z < -lockOnDirectionThreshold;
-        bool hasForwardOnlyInput = z > lockOnDirectionThreshold && !hasSideInput;
-
         bool shouldUseLockOnMovement =
             isLockedOn &&
             !isSprinting &&
             isGrounded &&
-            !isAttacking &&
-            (hasSideInput || hasBackwardInput || worldMoveDirection.sqrMagnitude <= 0.001f);
-
-        // Reines Vorwärtslaufen im Lock-on nutzt erstmal dein normales Forward-Blendtree.
-        // Sprinten nutzt ebenfalls dein normales Sprint-Blendtree.
-        if (hasForwardOnlyInput)
-        {
-            shouldUseLockOnMovement = false;
-        }
+            !isAttacking;
 
         animator.SetBool(useLockOnMovementHash, shouldUseLockOnMovement);
+
+        Vector2 moveInput = input.MovementInput;
 
         float targetX = 0f;
         float targetY = 0f;
 
         if (shouldUseLockOnMovement)
         {
-            if (hasSideInput)
-            {
-                // Diagonalbewegungen werden bewusst als Strafe animiert.
-                targetX = Mathf.Sign(localMoveDirection.x);
-                targetY = 0f;
-            }
-            else if (hasBackwardInput)
-            {
-                targetX = 0f;
-                targetY = -1f;
-            }
+            targetX = ApplyAnimationDeadzone(
+                moveInput.x,
+                lockOnAnimationInputDeadzone
+            );
+
+            targetY = ApplyAnimationDeadzone(
+                moveInput.y,
+                lockOnAnimationInputDeadzone
+            );
         }
 
         currentLockOnX = Mathf.Lerp(
