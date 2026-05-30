@@ -17,6 +17,7 @@ GameObject:
   - component: {fileID: 5893194098057817984}
   - component: {fileID: 1677818531705935048}
   - component: {fileID: 8412315546507683717}
+  - component: {fileID: 8817555315779023540}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -40,6 +41,7 @@ Transform:
   - {fileID: 7616500663249579600}
   - {fileID: 6621324889582718569}
   - {fileID: 2455506128615301557}
+  - {fileID: 4911584515214583355}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!143 &7778418600550153274
@@ -87,6 +89,7 @@ MonoBehaviour:
   drag: 25
   turnSpeed: 10
   gravity: 1
+  lockOnTurnSpeed: 720
   attackTurnSpeed: 300
   maxAttackRotationBudget: 180
 --- !u!114 &2463157896669090562
@@ -115,17 +118,25 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CameraController
   cameraRotationTarget: {fileID: 6621324889582718569}
+  playerLockOnController: {fileID: 0}
   mouseLookSens: 0.1
   gamepadLookSens: 1.8
   lookLimitV: 75
-  defaultPitch: 10
+  defaultPitch: 0
+  gamepadLookAxisDeadzone: 0.12
+  verticalOnlyYThreshold: 0.65
+  verticalOnlyXDeadzone: 0.22
+  killSmoothedVelocityOnDeadzone: 1
+  enableLockOnCamera: 1
+  lockOnRotationSpeed: 12
+  lockOnPitchOffset: 10
   autoRotateSpeed: 30
   autoRotateDelay: 0.25
   autoRotateInputThreshold: 0.1
   autoRotateDeadzone: 0.35
   verticalResetDelay: 1.5
   verticalResetSpeed: 1
-  lookSmoothing: 16
+  lookSmoothing: 50
 --- !u!114 &8252896637280229707
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -139,6 +150,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerState
   <CurrentPlayerMovementState>k__BackingField: 0
+  <CurrentPlayerTargetingState>k__BackingField: 0
 --- !u!114 &5893194098057817984
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -194,6 +206,31 @@ MonoBehaviour:
   attackInProgress: 0
   allowAttacking: 0
   allowWalking: 0
+--- !u!114 &8817555315779023540
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 975422624012187956}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7d65c3585add59e439b6efbacf74a6a4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerLockOnController
+  playerCamera: {fileID: 0}
+  targetLayers:
+    serializedVersion: 2
+    m_Bits: 128
+  lockOnRadius: 15
+  maxLockOnAngle: 70
+  unlockDistance: 18
+  targetValidationInterval: 0.1
+  requireLineOfSight: 0
+  obstructionLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  drawDebugGizmos: 1
 --- !u!1 &2913438161013370666
 GameObject:
   m_ObjectHideFlags: 0
@@ -357,6 +394,73 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4753675856954951461}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 60f7d70f8f054d44aa11aa333c09dcf1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponHitbox
+  owner: {fileID: 975422624012187956}
+--- !u!1 &6523655894138505896
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4911584515214583355}
+  - component: {fileID: 1641617144099798371}
+  - component: {fileID: 4955166472297357946}
+  m_Layer: 0
+  m_Name: WeaponHitbox
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4911584515214583355
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6523655894138505896}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0.784, z: 0.849}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5406081347212514150}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!65 &1641617144099798371
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6523655894138505896}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1.5, y: 1, z: 1.3459306}
+  m_Center: {x: 0, y: 0, z: 0.17296529}
+--- !u!114 &4955166472297357946
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6523655894138505896}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 60f7d70f8f054d44aa11aa333c09dcf1, type: 3}
