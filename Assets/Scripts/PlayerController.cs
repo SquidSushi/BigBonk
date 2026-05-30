@@ -17,22 +17,31 @@ public class PlayerController : MonoBehaviour
     public float turnSpeed;
     public float gravity;
 
+    [Header("Lock On Movement")]
+    [Tooltip("Wie schnell sich der Player im Lock-on zum Target dreht. Wert ist Grad pro Sekunde.")]
+    public float lockOnTurnSpeed = 720f;
+    [Tooltip("Wie schnell sich der Player beim Sprinten im Lock-on wieder in Laufrichtung dreht.")]
+    public float lockOnSprintTurnSpeed = 720f;
+
     [Header("Attack Rotation")]
     public float attackTurnSpeed = 360f;
     public float maxAttackRotationBudget = 180f;
+
     private int lastSeenAttackInstanceId;
     
     private float movingThreshold = 0.01f;
     private float targetSpeed;
-    public float CurrentSpeed { get; private set; }
-    private float _verticalVelocity;
 
-    private bool wasAttacking;
+    public float CurrentSpeed { get; private set; }
+    public Vector3 CurrentMovementDirection { get; private set; }
+
+    private float _verticalVelocity;
     private float remainingAttackRotation;
     
     private PlayerInputReader _playerInputReader;
     private PlayerState _playerState;
     private PlayerCombatController _playerCombatController;
+    private PlayerLockOnController _playerLockOnController;
 
     private void Awake()
     {
@@ -46,11 +55,14 @@ public class PlayerController : MonoBehaviour
 
         _playerState = GetComponent<PlayerState>();
         _playerCombatController = GetComponent<PlayerCombatController>();
+        _playerLockOnController = GetComponent<PlayerLockOnController>();
     }
 
     private void Update()
     {
-        bool isAttacking = _playerCombatController != null && _playerCombatController.IsAttackInProgress();
+        bool isAttacking =
+            _playerCombatController != null &&
+            _playerCombatController.IsAttackInProgress();
 
         if (isAttacking && _playerCombatController.AttackInstanceId != lastSeenAttackInstanceId)
         {
@@ -77,11 +89,11 @@ public class PlayerController : MonoBehaviour
             // Root Motion bewegt X/Z.
             HandleAttackVerticalMovementOnly();
 
-            // Aber Rotation während Attack erlauben.
+            // Rotation während Attack.
+            // Mit Lock-on: zum Target.
+            // Ohne Lock-on: wie vorher zur Input-Richtung.
             HandleAttackRotation();
         }
-
-        wasAttacking = isAttacking;
     }
 
     private void UpdateMovementState()
@@ -132,6 +144,7 @@ public class PlayerController : MonoBehaviour
 
         // Während Attack soll der Locomotion-Blend nicht weiterlaufen.
         CurrentSpeed = 0f;
+        CurrentMovementDirection = Vector3.zero;
     }
 
     private void BeginAttackRotation()
@@ -144,6 +157,22 @@ public class PlayerController : MonoBehaviour
         if (remainingAttackRotation <= 0f)
             return;
 
+        if (HasValidLockOnTarget())
+        {
+            Vector3 directionToTarget = GetDirectionToLockOnTarget();
+
+            if (directionToTarget.sqrMagnitude < 0.001f)
+                return;
+
+            RotateTowardsDirectionWithAttackBudget(directionToTarget);
+            return;
+        }
+
+        HandleFreeAttackRotation();
+    }
+
+    private void HandleFreeAttackRotation()
+    {
         Vector2 transformedInput = TransformedInput(_playerInputReader.MovementInput);
 
         if (transformedInput.sqrMagnitude < 0.001f)
@@ -167,6 +196,18 @@ public class PlayerController : MonoBehaviour
 
         if (desiredDirection.sqrMagnitude < 0.001f)
             return;
+
+        RotateTowardsDirectionWithAttackBudget(desiredDirection.normalized);
+    }
+
+    private void RotateTowardsDirectionWithAttackBudget(Vector3 desiredDirection)
+    {
+        desiredDirection.y = 0f;
+
+        if (desiredDirection.sqrMagnitude < 0.001f)
+            return;
+
+        desiredDirection.Normalize();
 
         Quaternion desiredRotation = Quaternion.LookRotation(desiredDirection, Vector3.up);
 
@@ -194,7 +235,8 @@ public class PlayerController : MonoBehaviour
     
     private void HandleLateralMovement()
     {
-        bool isSprinting = _playerState.CurrentPlayerMovementState == PlayerMovementState.Sprinting;
+        bool isSprinting =
+            _playerState.CurrentPlayerMovementState == PlayerMovementState.Sprinting;
 
         float lateralAcceleration = isSprinting ? sprintAcceleration : runAcceleration;
         
@@ -215,9 +257,20 @@ public class PlayerController : MonoBehaviour
         Vector3 movementDirection =
             cameraRightXZ * transformedInput.x +
             cameraForwardXZ * transformedInput.y;
+        
+        CurrentMovementDirection =
+            movementDirection.sqrMagnitude > 0.001f
+                ? movementDirection.normalized
+                : Vector3.zero;
 
-        Vector3 movementDelta = movementDirection * lateralAcceleration * Time.deltaTime;
-        Vector3 newVelocity = _characterController.velocity + movementDelta;
+        Vector3 movementDelta =
+            movementDirection *
+            lateralAcceleration *
+            Time.deltaTime;
+
+        Vector3 newVelocity =
+            _characterController.velocity +
+            movementDelta;
 
         if (movementDirection.sqrMagnitude > 0.85f)
         {
@@ -228,25 +281,71 @@ public class PlayerController : MonoBehaviour
             targetSpeed = walkSpeed;
         }
         
-        float clampLateralMagnitude = isSprinting ? sprintSpeed : targetSpeed;
+        float clampLateralMagnitude =
+            isSprinting ? sprintSpeed : targetSpeed;
 
-        Vector3 currentDrag = newVelocity.normalized * drag * Time.deltaTime;
-        newVelocity = (newVelocity.magnitude > drag * Time.deltaTime) 
-            ? newVelocity - currentDrag 
-            : Vector3.zero;
+        Vector3 currentDrag =
+            newVelocity.normalized *
+            drag *
+            Time.deltaTime;
 
-        newVelocity = Vector3.ClampMagnitude(newVelocity, clampLateralMagnitude);
+        newVelocity =
+            newVelocity.magnitude > drag * Time.deltaTime
+                ? newVelocity - currentDrag
+                : Vector3.zero;
 
-        Vector3 lateralVelocity = new Vector3(newVelocity.x, 0f, newVelocity.z);
+        newVelocity = Vector3.ClampMagnitude(
+            newVelocity,
+            clampLateralMagnitude
+        );
+
+        Vector3 lateralVelocity = new Vector3(
+            newVelocity.x,
+            0f,
+            newVelocity.z
+        );
+
         CurrentSpeed = lateralVelocity.magnitude;
 
         newVelocity.y += _verticalVelocity;
         
         _characterController.Move(newVelocity * Time.deltaTime);
-        
-        if (movementDirection.sqrMagnitude > 0.001f)
+
+        HandleCharacterRotation(movementDirection, isSprinting);
+    }
+
+    private void HandleCharacterRotation(Vector3 movementDirection, bool isSprinting)
+    {
+        bool hasMovementDirection = movementDirection.sqrMagnitude > 0.001f;
+
+        // Lock-on + Sprint:
+        // Character schaut wieder in Laufrichtung.
+        if (HasValidLockOnTarget() && isSprinting && hasMovementDirection)
         {
-            Quaternion targetRotation = Quaternion.LookRotation(movementDirection, Vector3.up);
+            RotateTowardsMovementDirection(
+                movementDirection,
+                lockOnSprintTurnSpeed
+            );
+
+            return;
+        }
+
+        // Lock-on ohne Sprint:
+        // Character schaut zum Gegner.
+        if (HasValidLockOnTarget())
+        {
+            RotateTowardsLockOnTarget(lockOnTurnSpeed);
+            return;
+        }
+
+        // Free-Look:
+        // Originalverhalten beibehalten.
+        if (hasMovementDirection)
+        {
+            Quaternion targetRotation = Quaternion.LookRotation(
+                movementDirection,
+                Vector3.up
+            );
 
             transform.rotation = Quaternion.Slerp(
                 transform.rotation,
@@ -254,6 +353,71 @@ public class PlayerController : MonoBehaviour
                 turnSpeed * Time.deltaTime
             );
         }
+    }
+    
+    private void RotateTowardsMovementDirection(Vector3 movementDirection, float rotationSpeed)
+    {
+        movementDirection.y = 0f;
+
+        if (movementDirection.sqrMagnitude < 0.001f)
+            return;
+
+        Quaternion targetRotation = Quaternion.LookRotation(
+            movementDirection.normalized,
+            Vector3.up
+        );
+
+        transform.rotation = Quaternion.RotateTowards(
+            transform.rotation,
+            targetRotation,
+            rotationSpeed * Time.deltaTime
+        );
+    }
+
+    private void RotateTowardsLockOnTarget(float rotationSpeed)
+    {
+        Vector3 directionToTarget = GetDirectionToLockOnTarget();
+
+        if (directionToTarget.sqrMagnitude < 0.001f)
+            return;
+
+        Quaternion targetRotation = Quaternion.LookRotation(
+            directionToTarget,
+            Vector3.up
+        );
+
+        transform.rotation = Quaternion.RotateTowards(
+            transform.rotation,
+            targetRotation,
+            rotationSpeed * Time.deltaTime
+        );
+    }
+
+    private bool HasValidLockOnTarget()
+    {
+        return _playerLockOnController != null &&
+               _playerLockOnController.IsLockedOn &&
+               _playerLockOnController.CurrentTarget != null;
+    }
+
+    private Vector3 GetDirectionToLockOnTarget()
+    {
+        if (!HasValidLockOnTarget())
+            return Vector3.zero;
+
+        Vector3 targetPosition =
+            _playerLockOnController.CurrentTarget.AimPosition;
+
+        Vector3 direction =
+            targetPosition - transform.position;
+
+        // Player soll nur um Y rotieren, nicht nach oben/unten kippen.
+        direction.y = 0f;
+
+        if (direction.sqrMagnitude < 0.001f)
+            return Vector3.zero;
+
+        return direction.normalized;
     }
     
     private Vector2 TransformedInput(Vector2 movementInput)
