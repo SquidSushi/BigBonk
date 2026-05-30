@@ -166,6 +166,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerAnimation
   animator: {fileID: 1677818531705935048}
   blendSpeed: 8
+  lockOnDirectionBlendSpeed: 10
+  lockOnAnimationInputDeadzone: 0
 --- !u!95 &1677818531705935048
 Animator:
   serializedVersion: 7
@@ -225,6 +227,12 @@ MonoBehaviour:
     m_Bits: 128
   lockOnRadius: 26
   maxLockOnAngle: 70
+  enableTargetSwitching: 1
+  targetSwitchThreshold: 0.65
+  targetSwitchNeutralThreshold: 0.25
+  targetSwitchCooldown: 0.25
+  minSwitchDirectionDot: 0.35
+  requireStickReturnToNeutral: 1
   unlockDistance: 30
   targetValidationInterval: 0.1
   requireLineOfSight: 0
