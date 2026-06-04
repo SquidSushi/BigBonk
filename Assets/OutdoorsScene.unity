@@ -1244,6 +1244,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 6824748287261531865, guid: 73964f7df13f7654386cd8cd51282a78, type: 3}
+      propertyPath: autoRotateDelay
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8817555315779023540, guid: 73964f7df13f7654386cd8cd51282a78, type: 3}
+      propertyPath: lockOnCameraPitchOffset
+      value: 10
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

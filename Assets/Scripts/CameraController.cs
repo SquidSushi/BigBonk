@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Serialization;
 
 public class CameraController : MonoBehaviour
 {
@@ -16,6 +17,8 @@ public class CameraController : MonoBehaviour
 
     [Tooltip("Default Pitch der Kamera. Positiv/negativ testen, je nach Setup.")]
     public float defaultPitch = 0f;
+    [FormerlySerializedAs("lookSmoothing")]
+    public float manualLookInputSmoothing = 12f;
 
     [Header("Gamepad Look Deadzones")]
     [Tooltip("Normale Deadzone pro Achse. Entfernt kleine X/Y-Reste vom Stick.")]
@@ -30,30 +33,21 @@ public class CameraController : MonoBehaviour
     [Tooltip("Wenn eine Achse durch Deadzone auf 0 gesetzt wird, wird auch alte geglättete Bewegung dieser Achse gelöscht.")]
     public bool killSmoothedVelocityOnDeadzone = true;
 
-    [Header("Lock On Camera")]
-    [SerializeField] private bool enableLockOnCamera = true;
-
-    [Tooltip("Wie schnell die Kamera im Lock-on zum Target rotiert.")]
-    [SerializeField] private float lockOnRotationSpeed = 12f;
-
-    [Tooltip("Zusätzlicher Pitch-Offset im Lock-on. Positiv schaut meist tiefer, negativ höher.")]
-    [SerializeField] private float lockOnPitchOffset = 0f;
-
     [Header("Auto Rotate")]
     public float autoRotateSpeed = 2f;
     public float autoRotateDelay = 0.25f;
     public float autoRotateInputThreshold = 0.1f;
     public float autoRotateDeadzone = 0.25f;
+    [Tooltip("Wie weich die Auto-Rotate-Richtung wechselt. Höher = träger/weicher.")]
+    public float autoRotateDirectionSmoothTime = 0.25f;
 
     [Header("Auto Vertical Reset")]
     public float verticalResetDelay = 1.5f;
     public float verticalResetSpeed = 5f;
 
-    [Header("Camera Smoothing")]
-    public float lookSmoothing = 12f;
-
     private float lastManualLookTime;
-
+    private float smoothedAutoRotateInfluence;
+    private float autoRotateInfluenceVelocity;
     private Vector2 _cameraRotation;
     private Vector2 currentLookVelocity = Vector2.zero;
 
@@ -102,7 +96,6 @@ public class CameraController : MonoBehaviour
     private void LateUpdate()
     {
         bool shouldUseLockOnCamera =
-            enableLockOnCamera &&
             playerLockOnController != null &&
             playerLockOnController.IsLockedOn &&
             playerLockOnController.CurrentTarget != null;
@@ -142,7 +135,7 @@ public class CameraController : MonoBehaviour
 
         Vector2 targetLookInput = rawLookInput * sensitivity;
 
-        float smoothFactor = 1f - Mathf.Exp(-lookSmoothing * Time.deltaTime);
+        float smoothFactor = 1f - Mathf.Exp(-manualLookInputSmoothing * Time.deltaTime);
 
         currentLookVelocity = Vector2.Lerp(
             currentLookVelocity,
@@ -178,7 +171,8 @@ public class CameraController : MonoBehaviour
 
         // Während Lock-on soll kein alter Free-Look-Smoothing-Rest weiterwirken.
         currentLookVelocity = Vector2.zero;
-
+        smoothedAutoRotateInfluence = 0f;
+        autoRotateInfluenceVelocity = 0f;
         // Dadurch startet Auto-Rotate/Vertical-Reset nach Unlock nicht sofort.
         lastManualLookTime = Time.time;
 
@@ -200,7 +194,7 @@ public class CameraController : MonoBehaviour
         float desiredYaw = desiredEuler.y;
 
         float desiredPitch = NormalizeAngle(desiredEuler.x);
-        desiredPitch += lockOnPitchOffset;
+        desiredPitch += playerLockOnController.LockOnCameraPitchOffset;
 
         float minPitch = defaultPitch - lookLimitV;
         float maxPitch = defaultPitch + lookLimitV;
@@ -211,7 +205,8 @@ public class CameraController : MonoBehaviour
             maxPitch
         );
 
-        float smoothFactor = 1f - Mathf.Exp(-lockOnRotationSpeed * Time.deltaTime);
+        float smoothFactor =
+            1f - Mathf.Exp(-playerLockOnController.LockOnCameraRotationSpeed * Time.deltaTime);
 
         _cameraRotation.x = Mathf.LerpAngle(
             _cameraRotation.x,
@@ -276,6 +271,8 @@ public class CameraController : MonoBehaviour
 
     private void HandleAutoRotate()
     {
+        float targetInfluence = 0f;
+
         bool allowAutoRotate =
             Time.time > lastManualLookTime + autoRotateDelay;
 
@@ -284,22 +281,31 @@ public class CameraController : MonoBehaviour
         bool hasMovementInput =
             movementInput.sqrMagnitude > 0.01f;
 
-        if (!allowAutoRotate || !hasMovementInput)
-            return;
+        if (allowAutoRotate && hasMovementInput)
+        {
+            float horizontalInfluence = movementInput.x;
 
-        float horizontalInfluence = movementInput.x;
+            if (Mathf.Abs(horizontalInfluence) > autoRotateDeadzone)
+            {
+                float normalizedInfluence =
+                    (Mathf.Abs(horizontalInfluence) - autoRotateDeadzone) /
+                    (1f - autoRotateDeadzone);
 
-        if (Mathf.Abs(horizontalInfluence) <= autoRotateDeadzone)
-            return;
+                targetInfluence =
+                    normalizedInfluence *
+                    Mathf.Sign(horizontalInfluence);
+            }
+        }
 
-        float normalizedInfluence =
-            (Mathf.Abs(horizontalInfluence) - autoRotateDeadzone) /
-            (1f - autoRotateDeadzone);
-
-        normalizedInfluence *= Mathf.Sign(horizontalInfluence);
+        smoothedAutoRotateInfluence = Mathf.SmoothDamp(
+            smoothedAutoRotateInfluence,
+            targetInfluence,
+            ref autoRotateInfluenceVelocity,
+            autoRotateDirectionSmoothTime
+        );
 
         _cameraRotation.x +=
-            normalizedInfluence *
+            smoothedAutoRotateInfluence *
             autoRotateSpeed *
             Time.deltaTime;
     }

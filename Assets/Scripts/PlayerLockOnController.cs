@@ -14,6 +14,16 @@ public class PlayerLockOnController : MonoBehaviour
 
     [Header("Target Switching")]
     [SerializeField] private bool enableTargetSwitching = true;
+    
+    [Header("Lock On Camera")]
+    [Tooltip("Wie schnell die Kamera im Lock-on zum Target rotiert.")]
+    [SerializeField] private float lockOnCameraRotationSpeed = 12f;
+
+    [Tooltip("Zusätzlicher Pitch-Offset im Lock-on. Positiv schaut meist tiefer, negativ höher.")]
+    [SerializeField] private float lockOnCameraPitchOffset = 0f;
+
+    public float LockOnCameraRotationSpeed => lockOnCameraRotationSpeed;
+    public float LockOnCameraPitchOffset => lockOnCameraPitchOffset;
 
     [Tooltip("Wie weit der rechte Stick gedrückt werden muss, um ein Target zu wechseln.")]
     [SerializeField] private float targetSwitchThreshold = 0.65f;
