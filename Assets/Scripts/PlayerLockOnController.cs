@@ -163,7 +163,11 @@ public class PlayerLockOnController : MonoBehaviour
         if (target == null)
             return;
 
+        if (CurrentTarget != null)
+            CurrentTarget.SetTargeted(false);
+
         CurrentTarget = target;
+        CurrentTarget.SetTargeted(true);
 
         _playerState.SetPlayerTargetingState(PlayerTargetingState.LockedOn);
 
@@ -177,6 +181,7 @@ public class PlayerLockOnController : MonoBehaviour
         if (CurrentTarget != null)
         {
             Debug.Log($"LockOn: Target gelöst von {CurrentTarget.name}");
+            CurrentTarget.SetTargeted(false);
         }
 
         CurrentTarget = null;

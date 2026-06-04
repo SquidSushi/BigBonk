@@ -163,6 +163,10 @@ MonoBehaviour:
   lockOnPoint: {fileID: 6420664203532913887}
   isTargetable: 1
   priority: 1
+  showTargetVisual: 1
+  targetVisualColor: {r: 1, g: 1, b: 1, a: 1}
+  targetVisualSize: 14
+  drawOnlyInPlayMode: 1
 --- !u!114 &5893344846809326578
 MonoBehaviour:
   m_ObjectHideFlags: 0
