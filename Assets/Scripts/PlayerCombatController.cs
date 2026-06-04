@@ -8,6 +8,10 @@ public class PlayerCombatController : MonoBehaviour
     private PlayerState playerState;
     private PlayerAnimation playerAnimation;
     private WeaponHitbox weaponHitbox;
+    private CombatDamageSource damageSource;
+
+    [Header("Attack Data")]
+    [SerializeField] private AttackData defaultAttackData;
 
     [Header("Root Motion")]
     [SerializeField] private float rootMotionDisableDelay = 0.08f;
@@ -21,6 +25,7 @@ public class PlayerCombatController : MonoBehaviour
     [SerializeField] private bool attackInProgress;
     [SerializeField] private bool allowAttacking;
     [SerializeField] private bool allowWalking;
+
     public int AttackInstanceId { get; private set; }
 
     private float walkingCancelLockedUntil;
@@ -33,6 +38,8 @@ public class PlayerCombatController : MonoBehaviour
         inputReader = GetComponent<PlayerInputReader>();
         playerState = GetComponent<PlayerState>();
         playerAnimation = GetComponent<PlayerAnimation>();
+        damageSource = GetComponent<CombatDamageSource>();
+
         if (weaponHitbox == null)
             weaponHitbox = GetComponentInChildren<WeaponHitbox>();
     }
@@ -65,10 +72,9 @@ public class PlayerCombatController : MonoBehaviour
     
     private bool HandleAttackInput()
     {
-        if (!inputReader.attackPressed)
+        if (!inputReader.AttackPressed)
             return false;
 
-        // Wenn Attack gedrückt wurde, soll in diesem Frame kein Walking-Cancel passieren.
         if (!attackInProgress)
         {
             StartAttack();
@@ -105,17 +111,16 @@ public class PlayerCombatController : MonoBehaviour
     {
         attackInProgress = true;
 
-        StartAttackCommon();
+        StartAttackCommon(defaultAttackData);
     }
 
     private void StartNextAttack()
     {
-        // attackInProgress bleibt true.
-        // Wir starten nur die Attack-Animation neu.
-        StartAttackCommon();
+        // Später wird hier je nach Combo-Stufe eine andere AttackData gesetzt.
+        StartAttackCommon(defaultAttackData);
     }
 
-    private void StartAttackCommon()
+    private void StartAttackCommon(AttackData attackData)
     {
         AttackInstanceId++;
 
@@ -126,6 +131,11 @@ public class PlayerCombatController : MonoBehaviour
         ignoreEndEventsUntil = Time.time + ignoreEndEventsAfterAttackStart;
 
         StopDisableRootMotionRoutine();
+
+        if (damageSource != null)
+        {
+            damageSource.SetCurrentAttack(attackData);
+        }
 
         playerState.SetPlayerMovementState(PlayerMovementState.Attack);
 
@@ -138,6 +148,11 @@ public class PlayerCombatController : MonoBehaviour
         attackInProgress = false;
         allowAttacking = false;
         allowWalking = false;
+
+        if (damageSource != null)
+        {
+            damageSource.ClearCurrentAttack();
+        }
 
         playerState.SetPlayerMovementState(PlayerMovementState.Idling);
 
@@ -159,8 +174,6 @@ public class PlayerCombatController : MonoBehaviour
         if (!attackInProgress)
             return;
 
-        // Verhindert, dass ein altes/blendendes Event direkt nach einem Attack-Restart
-        // Walking-Cancel wieder öffnet.
         if (Time.time < walkingCancelLockedUntil)
             return;
 
@@ -172,8 +185,6 @@ public class PlayerCombatController : MonoBehaviour
         if (!attackInProgress)
             return;
 
-        // Verhindert, dass ein altes End-Event von der vorherigen Attack
-        // die neue Attack sofort beendet.
         if (Time.time < ignoreEndEventsUntil)
             return;
 
@@ -185,6 +196,11 @@ public class PlayerCombatController : MonoBehaviour
         attackInProgress = false;
         allowAttacking = false;
         allowWalking = false;
+
+        if (damageSource != null)
+        {
+            damageSource.ClearCurrentAttack();
+        }
 
         playerAnimation.FinishAttack();
 

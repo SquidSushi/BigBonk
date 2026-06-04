@@ -18,6 +18,7 @@ GameObject:
   - component: {fileID: 1677818531705935048}
   - component: {fileID: 8412315546507683717}
   - component: {fileID: 8817555315779023540}
+  - component: {fileID: 8216771362473655051}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -41,7 +42,6 @@ Transform:
   - {fileID: 7616500663249579600}
   - {fileID: 6621324889582718569}
   - {fileID: 2455506128615301557}
-  - {fileID: 4911584515214583355}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!143 &7778418600550153274
@@ -87,7 +87,8 @@ MonoBehaviour:
   runAcceleration: 50
   sprintAcceleration: 50
   drag: 25
-  turnSpeed: 10
+  runTurnSpeed: 10
+  sprintTurnSpeed: 5
   gravity: 1
   lockOnTurnSpeed: 720
   lockOnSprintTurnSpeed: 720
@@ -105,7 +106,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 24f554de5f389e442a697a269f9dfe83, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerInputReader
-  holdToSprint: 0
 --- !u!114 &6824748287261531865
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -124,20 +124,17 @@ MonoBehaviour:
   gamepadLookSens: 1.8
   lookLimitV: 75
   defaultPitch: 0
+  manualLookInputSmoothing: 50
   gamepadLookAxisDeadzone: 0.12
   verticalOnlyYThreshold: 0.65
   verticalOnlyXDeadzone: 0.22
   killSmoothedVelocityOnDeadzone: 1
-  enableLockOnCamera: 1
-  lockOnRotationSpeed: 12
-  lockOnPitchOffset: 10
   autoRotateSpeed: 30
-  autoRotateDelay: 0.25
   autoRotateInputThreshold: 0.1
   autoRotateDeadzone: 0.35
+  autoRotateDirectionSmoothTime: 0.25
   verticalResetDelay: 1.5
   verticalResetSpeed: 1
-  lookSmoothing: 50
 --- !u!114 &8252896637280229707
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -202,6 +199,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6c428549ef8c8a446b64183448cedf91, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
+  defaultAttackData: {fileID: 11400000, guid: 64155f59693cf2744aa4134d7c410e04, type: 2}
   rootMotionDisableDelay: 0.08
   walkingCancelInputThreshold: 0.15
   walkingCancelLockoutAfterAttackStart: 0.15
@@ -228,11 +226,18 @@ MonoBehaviour:
   lockOnRadius: 26
   maxLockOnAngle: 70
   enableTargetSwitching: 1
-  targetSwitchThreshold: 0.65
-  targetSwitchNeutralThreshold: 0.25
   targetSwitchCooldown: 0.25
   minSwitchDirectionDot: 0.35
-  requireStickReturnToNeutral: 1
+  gamepadTargetSwitchThreshold: 0.65
+  gamepadTargetSwitchNeutralThreshold: 0.25
+  requireGamepadStickReturnToNeutral: 1
+  mouseTargetSwitchThreshold: 20
+  mouseTargetSwitchResetThreshold: 1.5
+  mouseTargetSwitchRearmTime: 0.08
+  requireMouseStopBeforeNextSwitch: 0
+  mouseSwitchAccumulatorDecay: 120
+  lockOnCameraRotationSpeed: 12
+  lockOnCameraPitchOffset: 10
   unlockDistance: 30
   targetValidationInterval: 0.1
   requireLineOfSight: 0
@@ -240,6 +245,21 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 0
   drawDebugGizmos: 1
+--- !u!114 &8216771362473655051
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 975422624012187956}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 91b9da4eb60c6f145b2ae0e34dbefa03, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CombatDamageSource
+  owner: {fileID: 0}
+  baseDamage: 10
+  defaultAttackData: {fileID: 11400000, guid: 64155f59693cf2744aa4134d7c410e04, type: 2}
 --- !u!1 &2913438161013370666
 GameObject:
   m_ObjectHideFlags: 0
@@ -409,73 +429,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WeaponHitbox
   owner: {fileID: 975422624012187956}
---- !u!1 &6523655894138505896
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 4911584515214583355}
-  - component: {fileID: 1641617144099798371}
-  - component: {fileID: 4955166472297357946}
-  m_Layer: 0
-  m_Name: WeaponHitbox
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &4911584515214583355
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6523655894138505896}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.784, z: 0.849}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 5406081347212514150}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &1641617144099798371
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6523655894138505896}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 1
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 1.5, y: 1, z: 1.3459306}
-  m_Center: {x: 0, y: 0, z: 0.17296529}
---- !u!114 &4955166472297357946
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6523655894138505896}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 60f7d70f8f054d44aa11aa333c09dcf1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::WeaponHitbox
-  owner: {fileID: 975422624012187956}
+  damageSource: {fileID: 8216771362473655051}
 --- !u!1 &8377745688732106239
 GameObject:
   m_ObjectHideFlags: 0
