@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 [DefaultExecutionOrder(-1)]
 public class PlayerController : MonoBehaviour
@@ -14,12 +15,19 @@ public class PlayerController : MonoBehaviour
     public float runAcceleration;
     public float sprintAcceleration;
     public float drag;
-    public float turnSpeed;
+
+    [FormerlySerializedAs("turnSpeed")]
+    public float runTurnSpeed;
+
+    [Tooltip("Free-Roam Drehgeschwindigkeit beim Sprinten. Niedriger als Run Turn Speed setzen, damit Sprint träger rotiert.")]
+    public float sprintTurnSpeed;
+
     public float gravity;
 
     [Header("Lock On Movement")]
     [Tooltip("Wie schnell sich der Player im Lock-on zum Target dreht. Wert ist Grad pro Sekunde.")]
     public float lockOnTurnSpeed = 720f;
+
     [Tooltip("Wie schnell sich der Player beim Sprinten im Lock-on wieder in Laufrichtung dreht.")]
     public float lockOnSprintTurnSpeed = 720f;
 
@@ -70,13 +78,11 @@ public class PlayerController : MonoBehaviour
             BeginAttackRotation();
         }
 
-        // Während Attack darf Movement den State NICHT überschreiben.
         if (!isAttacking)
         {
             UpdateMovementState();
         }
 
-        // Gravity darf weiterlaufen.
         HandleVerticalMovement();
 
         if (!isAttacking)
@@ -85,13 +91,7 @@ public class PlayerController : MonoBehaviour
         }
         else
         {
-            // Während Attack keine freie Bewegung.
-            // Root Motion bewegt X/Z.
             HandleAttackVerticalMovementOnly();
-
-            // Rotation während Attack.
-            // Mit Lock-on: zum Target.
-            // Ohne Lock-on: wie vorher zur Input-Richtung.
             HandleAttackRotation();
         }
     }
@@ -112,7 +112,6 @@ public class PlayerController : MonoBehaviour
 
         _playerState.SetPlayerMovementState(lateralState);
         
-        // Control Airborne State
         if (!isGrounded && _characterController.velocity.y > 0f)
         {
             _playerState.SetPlayerMovementState(PlayerMovementState.Jumping);
@@ -137,12 +136,9 @@ public class PlayerController : MonoBehaviour
 
     private void HandleAttackVerticalMovementOnly()
     {
-        // Root Motion bewegt X/Z über den Animator.
-        // Hier wenden wir nur Y/Gravity an, damit der CharacterController grounded bleibt.
         Vector3 verticalMove = new Vector3(0f, _verticalVelocity, 0f);
         _characterController.Move(verticalMove * Time.deltaTime);
 
-        // Während Attack soll der Locomotion-Blend nicht weiterlaufen.
         CurrentSpeed = 0f;
         CurrentMovementDirection = Vector3.zero;
     }
@@ -318,8 +314,6 @@ public class PlayerController : MonoBehaviour
     {
         bool hasMovementDirection = movementDirection.sqrMagnitude > 0.001f;
 
-        // Lock-on + Sprint:
-        // Character schaut wieder in Laufrichtung.
         if (HasValidLockOnTarget() && isSprinting && hasMovementDirection)
         {
             RotateTowardsMovementDirection(
@@ -330,18 +324,17 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
-        // Lock-on ohne Sprint:
-        // Character schaut zum Gegner.
         if (HasValidLockOnTarget())
         {
             RotateTowardsLockOnTarget(lockOnTurnSpeed);
             return;
         }
 
-        // Free-Look:
-        // Originalverhalten beibehalten.
         if (hasMovementDirection)
         {
+            float currentFreeRoamTurnSpeed =
+                isSprinting ? sprintTurnSpeed : runTurnSpeed;
+
             Quaternion targetRotation = Quaternion.LookRotation(
                 movementDirection,
                 Vector3.up
@@ -350,7 +343,7 @@ public class PlayerController : MonoBehaviour
             transform.rotation = Quaternion.Slerp(
                 transform.rotation,
                 targetRotation,
-                turnSpeed * Time.deltaTime
+                currentFreeRoamTurnSpeed * Time.deltaTime
             );
         }
     }
@@ -411,7 +404,6 @@ public class PlayerController : MonoBehaviour
         Vector3 direction =
             targetPosition - transform.position;
 
-        // Player soll nur um Y rotieren, nicht nach oben/unten kippen.
         direction.y = 0f;
 
         if (direction.sqrMagnitude < 0.001f)

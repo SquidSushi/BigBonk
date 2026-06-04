@@ -1,33 +1,85 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public class PlayerInputReader : CharacterInputReader
+[DefaultExecutionOrder(-2)]
+public class PlayerInputReader : MonoBehaviour
 {
-    InputAction moveAction;
-    InputAction sprintAction;
-    InputAction attackInput;
-    [SerializeField] private bool holdToSprint;
+    private InputAction moveAction;
+    private InputAction sprintAction;
+    private InputAction attackAction;
+    private InputAction lookAction;
+    private InputAction lockOnAction;
+
+    public Vector2 MovementInput { get; private set; }
+    public Vector2 LookInput { get; private set; }
+
     public bool SprintToggledOn { get; private set; }
-    public bool attackPressed { get; private set; }
-    
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
+
+    // Für bestehenden Code im PlayerCombatController kompatibel lassen.
+    public bool attackPressed => AttackPressed;
+    public bool AttackPressed { get; private set; }
+
+    public bool LockOnPressed { get; private set; }
+
+    public bool IsLookInputFromGamepad { get; private set; }
+
+    private void Awake()
     {
-        moveAction = InputSystem.actions.FindAction("Move");
-        sprintAction = InputSystem.actions.FindAction("Sprint");
-        attackInput = InputSystem.actions.FindAction("Attack");
-        if (moveAction == null)
-        {
-            Debug.LogError("du hund");
-            this.enabled = false;
-        }
+        moveAction = FindAction("Move", true);
+        sprintAction = FindAction("Sprint", true);
+        attackAction = FindAction("Attack", true);
+        lookAction = FindAction("Look", true);
+        lockOnAction = FindAction("LockOn", true);
     }
 
-    // Update is called once per frame
-    public override void Update()
+    private void Update()
     {
-        this.MovementInput = moveAction.ReadValue<Vector2>();
-        SprintToggledOn = sprintAction.IsPressed();
-        attackPressed = attackInput.WasPressedThisFrame();
+        MovementInput = moveAction != null
+            ? moveAction.ReadValue<Vector2>()
+            : Vector2.zero;
+
+        LookInput = lookAction != null
+            ? lookAction.ReadValue<Vector2>()
+            : Vector2.zero;
+
+        SprintToggledOn =
+            sprintAction != null &&
+            sprintAction.IsPressed();
+
+        AttackPressed =
+            attackAction != null &&
+            attackAction.WasPressedThisFrame();
+
+        LockOnPressed =
+            lockOnAction != null &&
+            lockOnAction.WasPressedThisFrame();
+
+        UpdateLookDevice();
+    }
+
+    private void UpdateLookDevice()
+    {
+        if (lookAction == null)
+            return;
+
+        // Nur aktualisieren, wenn wirklich Look-Input da ist.
+        // Bei zero Input ist es egal, ob Maus oder Gamepad aktiv war.
+        if (LookInput.sqrMagnitude < 0.0001f)
+            return;
+
+        IsLookInputFromGamepad =
+            lookAction.activeControl?.device is Gamepad;
+    }
+
+    private InputAction FindAction(string actionName, bool logErrorIfMissing)
+    {
+        InputAction action = InputSystem.actions.FindAction(actionName);
+
+        if (action == null && logErrorIfMissing)
+        {
+            Debug.LogError($"PlayerInputReader: InputAction '{actionName}' wurde nicht gefunden.");
+        }
+
+        return action;
     }
 }

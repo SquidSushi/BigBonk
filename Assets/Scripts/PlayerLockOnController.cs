@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.InputSystem;
+using UnityEngine.Serialization;
 
 public class PlayerLockOnController : MonoBehaviour
 {
@@ -15,20 +15,50 @@ public class PlayerLockOnController : MonoBehaviour
     [Header("Target Switching")]
     [SerializeField] private bool enableTargetSwitching = true;
 
-    [Tooltip("Wie weit der rechte Stick gedrückt werden muss, um ein Target zu wechseln.")]
-    [SerializeField] private float targetSwitchThreshold = 0.65f;
-
-    [Tooltip("Wie weit der Stick zurück in die Mitte muss, bevor erneut gewechselt werden darf.")]
-    [SerializeField] private float targetSwitchNeutralThreshold = 0.25f;
-
     [Tooltip("Mindestzeit zwischen Target-Wechseln.")]
     [SerializeField] private float targetSwitchCooldown = 0.25f;
 
     [Tooltip("Wie stark ein neues Target in die gewünschte Bildschirmrichtung liegen muss.")]
     [SerializeField] private float minSwitchDirectionDot = 0.35f;
 
+    [Header("Target Switching - Gamepad")]
+    [Tooltip("Wie weit der rechte Stick gedrückt werden muss, um ein Target zu wechseln.")]
+    [FormerlySerializedAs("targetSwitchThreshold")]
+    [SerializeField] private float gamepadTargetSwitchThreshold = 0.65f;
+
+    [Tooltip("Wie weit der Stick zurück in die Mitte muss, bevor erneut gewechselt werden darf.")]
+    [FormerlySerializedAs("targetSwitchNeutralThreshold")]
+    [SerializeField] private float gamepadTargetSwitchNeutralThreshold = 0.25f;
+
     [Tooltip("Wenn aktiv, muss der rechte Stick vor dem nächsten Wechsel erst zurück zur Mitte.")]
-    [SerializeField] private bool requireStickReturnToNeutral = true;
+    [FormerlySerializedAs("requireStickReturnToNeutral")]
+    [SerializeField] private bool requireGamepadStickReturnToNeutral = true;
+
+    [Header("Target Switching - Mouse")]
+    [Tooltip("Wie viel Mausbewegung gesammelt werden muss, bevor ein Target-Wechsel passiert.")]
+    [SerializeField] private float mouseTargetSwitchThreshold = 55f;
+
+    [Tooltip("Unter diesem Mausbewegungswert gilt die Maus als still.")]
+    [SerializeField] private float mouseTargetSwitchResetThreshold = 1.5f;
+
+    [Tooltip("Wie lange die Maus still sein muss, bevor erneut gewechselt werden darf.")]
+    [SerializeField] private float mouseTargetSwitchRearmTime = 0.08f;
+
+    [Tooltip("Wenn aktiv, muss die Maus nach einem Target-Wechsel kurz stoppen, bevor erneut gewechselt werden darf.")]
+    [SerializeField] private bool requireMouseStopBeforeNextSwitch = true;
+
+    [Tooltip("Wie schnell ungenutzte Mausbewegung wieder abgebaut wird.")]
+    [SerializeField] private float mouseSwitchAccumulatorDecay = 120f;
+
+    [Header("Lock On Camera")]
+    [Tooltip("Wie schnell die Kamera im Lock-on zum Target rotiert.")]
+    [SerializeField] private float lockOnCameraRotationSpeed = 12f;
+
+    [Tooltip("Zusätzlicher Pitch-Offset im Lock-on. Positiv schaut meist tiefer, negativ höher.")]
+    [SerializeField] private float lockOnCameraPitchOffset = 0f;
+
+    public float LockOnCameraRotationSpeed => lockOnCameraRotationSpeed;
+    public float LockOnCameraPitchOffset => lockOnCameraPitchOffset;
 
     [Header("Unlock Rules")]
     [SerializeField] private float unlockDistance = 18f;
@@ -45,20 +75,23 @@ public class PlayerLockOnController : MonoBehaviour
     public bool IsLockedOn => CurrentTarget != null;
 
     private PlayerState _playerState;
-
-    private InputAction lockOnAction;
-    private InputAction lookAction;
+    private PlayerInputReader _playerInputReader;
 
     private float nextValidationTime;
     private float nextTargetSwitchTime;
 
-    private bool targetSwitchInputLocked;
+    private bool gamepadTargetSwitchInputLocked;
+
+    private bool mouseTargetSwitchInputLocked;
+    private float mouseNeutralStartedTime = -1f;
+    private Vector2 accumulatedMouseSwitchInput;
 
     private readonly Collider[] targetColliders = new Collider[32];
 
     private void Awake()
     {
         _playerState = GetComponent<PlayerState>();
+        _playerInputReader = GetComponent<PlayerInputReader>();
 
         if (playerCamera == null)
             playerCamera = GetComponentInChildren<Camera>();
@@ -66,19 +99,11 @@ public class PlayerLockOnController : MonoBehaviour
 
     private void Start()
     {
-        lockOnAction = InputSystem.actions.FindAction("LockOn");
-        lookAction = InputSystem.actions.FindAction("Look");
-
-        if (lockOnAction == null)
+        if (_playerInputReader == null)
         {
-            Debug.LogError("PlayerLockOnController: InputAction 'LockOn' wurde nicht gefunden.");
+            Debug.LogError("PlayerLockOnController: PlayerInputReader wurde nicht gefunden.");
             enabled = false;
             return;
-        }
-
-        if (lookAction == null)
-        {
-            Debug.LogWarning("PlayerLockOnController: InputAction 'Look' wurde nicht gefunden. Target-Switching mit rechtem Stick funktioniert dadurch nicht.");
         }
 
         if (_playerState == null)
@@ -92,13 +117,12 @@ public class PlayerLockOnController : MonoBehaviour
         {
             Debug.LogError("PlayerLockOnController: Keine Camera gefunden.");
             enabled = false;
-            return;
         }
     }
 
     private void Update()
     {
-        if (lockOnAction.WasPressedThisFrame())
+        if (_playerInputReader.LockOnPressed)
         {
             ToggleLockOn();
         }
@@ -159,7 +183,18 @@ public class PlayerLockOnController : MonoBehaviour
 
         _playerState.SetPlayerTargetingState(PlayerTargetingState.Free);
 
-        targetSwitchInputLocked = false;
+        ResetTargetSwitchInputState();
+    }
+
+    private void ResetTargetSwitchInputState()
+    {
+        gamepadTargetSwitchInputLocked = false;
+
+        mouseTargetSwitchInputLocked = false;
+        mouseNeutralStartedTime = -1f;
+        accumulatedMouseSwitchInput = Vector2.zero;
+
+        nextTargetSwitchTime = 0f;
     }
 
     private void HandleTargetSwitchInput()
@@ -167,32 +202,41 @@ public class PlayerLockOnController : MonoBehaviour
         if (!enableTargetSwitching)
             return;
 
-        if (lookAction == null)
-            return;
-
         if (CurrentTarget == null)
             return;
 
-        Vector2 lookInput = lookAction.ReadValue<Vector2>();
+        Vector2 lookInput = _playerInputReader.LookInput;
 
+        if (_playerInputReader.IsLookInputFromGamepad)
+        {
+            HandleGamepadTargetSwitchInput(lookInput);
+        }
+        else
+        {
+            HandleMouseTargetSwitchInput(lookInput);
+        }
+    }
+
+    private void HandleGamepadTargetSwitchInput(Vector2 lookInput)
+    {
         float neutralThresholdSqr =
-            targetSwitchNeutralThreshold *
-            targetSwitchNeutralThreshold;
+            gamepadTargetSwitchNeutralThreshold *
+            gamepadTargetSwitchNeutralThreshold;
 
         if (lookInput.sqrMagnitude < neutralThresholdSqr)
         {
-            targetSwitchInputLocked = false;
+            gamepadTargetSwitchInputLocked = false;
             return;
         }
 
         float switchThresholdSqr =
-            targetSwitchThreshold *
-            targetSwitchThreshold;
+            gamepadTargetSwitchThreshold *
+            gamepadTargetSwitchThreshold;
 
         if (lookInput.sqrMagnitude < switchThresholdSqr)
             return;
 
-        if (requireStickReturnToNeutral && targetSwitchInputLocked)
+        if (requireGamepadStickReturnToNeutral && gamepadTargetSwitchInputLocked)
             return;
 
         if (Time.time < nextTargetSwitchTime)
@@ -200,17 +244,103 @@ public class PlayerLockOnController : MonoBehaviour
 
         Vector2 switchDirection = GetDominantSwitchDirection(lookInput);
 
+        bool switched = ExecuteTargetSwitch(switchDirection);
+
+        if (requireGamepadStickReturnToNeutral && switched)
+        {
+            gamepadTargetSwitchInputLocked = true;
+        }
+    }
+
+    private void HandleMouseTargetSwitchInput(Vector2 lookInput)
+    {
+        float resetThresholdSqr =
+            mouseTargetSwitchResetThreshold *
+            mouseTargetSwitchResetThreshold;
+
+        bool mouseIsStill =
+            lookInput.sqrMagnitude <= resetThresholdSqr;
+
+        if (mouseIsStill)
+        {
+            if (mouseNeutralStartedTime < 0f)
+            {
+                mouseNeutralStartedTime = Time.time;
+            }
+
+            bool mouseWasStillLongEnough =
+                Time.time >= mouseNeutralStartedTime + mouseTargetSwitchRearmTime;
+
+            if (mouseWasStillLongEnough)
+            {
+                mouseTargetSwitchInputLocked = false;
+                accumulatedMouseSwitchInput = Vector2.zero;
+            }
+
+            return;
+        }
+
+        mouseNeutralStartedTime = -1f;
+
+        if (requireMouseStopBeforeNextSwitch && mouseTargetSwitchInputLocked)
+            return;
+
+        if (Time.time < nextTargetSwitchTime)
+            return;
+
+        accumulatedMouseSwitchInput = Vector2.MoveTowards(
+            accumulatedMouseSwitchInput,
+            Vector2.zero,
+            mouseSwitchAccumulatorDecay * Time.deltaTime
+        );
+
+        if (accumulatedMouseSwitchInput.sqrMagnitude > 0.001f &&
+            lookInput.sqrMagnitude > 0.001f)
+        {
+            float directionDot = Vector2.Dot(
+                accumulatedMouseSwitchInput.normalized,
+                lookInput.normalized
+            );
+
+            if (directionDot < -0.25f)
+            {
+                accumulatedMouseSwitchInput = Vector2.zero;
+            }
+        }
+
+        accumulatedMouseSwitchInput += lookInput;
+
+        if (accumulatedMouseSwitchInput.magnitude < mouseTargetSwitchThreshold)
+            return;
+
+        Vector2 switchDirection =
+            GetDominantSwitchDirection(accumulatedMouseSwitchInput);
+
+        bool switched = ExecuteTargetSwitch(switchDirection);
+
+        accumulatedMouseSwitchInput = Vector2.zero;
+
+        if (requireMouseStopBeforeNextSwitch && switched)
+        {
+            mouseTargetSwitchInputLocked = true;
+        }
+    }
+
+    private bool ExecuteTargetSwitch(Vector2 switchDirection)
+    {
+        if (switchDirection.sqrMagnitude < 0.001f)
+            return false;
+
         bool switched = TrySwitchTarget(switchDirection);
 
         nextTargetSwitchTime = Time.time + targetSwitchCooldown;
-
-        if (requireStickReturnToNeutral)
-            targetSwitchInputLocked = true;
 
         if (switched)
         {
             Debug.Log($"LockOn: Target gewechselt nach {switchDirection}");
         }
+
+        return switched;
     }
 
     private Vector2 GetDominantSwitchDirection(Vector2 input)
@@ -261,8 +391,6 @@ public class PlayerLockOnController : MonoBehaviour
                 currentTargetViewport3.y
             );
 
-        // Falls das aktuelle Target aus irgendeinem Grund nicht sauber im View liegt,
-        // nehmen wir die Bildschirmmitte als Fallback.
         if (currentTargetViewport3.z <= 0f)
         {
             currentTargetViewport = new Vector2(0.5f, 0.5f);
@@ -295,7 +423,6 @@ public class PlayerLockOnController : MonoBehaviour
             Vector3 candidateViewport3 =
                 playerCamera.WorldToViewportPoint(target.AimPosition);
 
-            // Hinter der Kamera nicht berücksichtigen.
             if (candidateViewport3.z <= 0f)
                 continue;
 
@@ -317,7 +444,6 @@ public class PlayerLockOnController : MonoBehaviour
             float directionDot =
                 Vector2.Dot(screenDirection, switchDirection);
 
-            // Target liegt nicht ausreichend in der gewünschten Richtung.
             if (directionDot < minSwitchDirectionDot)
                 continue;
 
@@ -332,11 +458,6 @@ public class PlayerLockOnController : MonoBehaviour
             float priorityBonus =
                 1f / Mathf.Max(0.01f, target.Priority);
 
-            // Niedriger Score gewinnt.
-            // Wichtigste Faktoren:
-            // 1. Liegt es klar in der gedrückten Richtung?
-            // 2. Ist es nah am aktuellen Target auf dem Bildschirm?
-            // 3. Ist es nicht absurd weit weg?
             float score =
                 (1f - directionDot) * 2f +
                 screenDistance * 1.25f +
@@ -379,7 +500,6 @@ public class PlayerLockOnController : MonoBehaviour
         if (requireLineOfSight && !HasLineOfSight(CurrentTarget))
         {
             ClearLockOn();
-            return;
         }
     }
 
