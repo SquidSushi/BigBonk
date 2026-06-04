@@ -9,6 +9,7 @@ public class PlayerCombatController : MonoBehaviour
     private PlayerAnimation playerAnimation;
     private WeaponHitbox weaponHitbox;
     private CombatDamageSource damageSource;
+    private PlayerStamina playerStamina;
 
     [Header("Attack Data")]
     [SerializeField] private AttackData defaultAttackData;
@@ -31,6 +32,7 @@ public class PlayerCombatController : MonoBehaviour
     private float walkingCancelLockedUntil;
     private float ignoreEndEventsUntil;
 
+    private bool staminaActionActive;
     private Coroutine disableRootMotionRoutine;
 
     private void Awake()
@@ -39,6 +41,7 @@ public class PlayerCombatController : MonoBehaviour
         playerState = GetComponent<PlayerState>();
         playerAnimation = GetComponent<PlayerAnimation>();
         damageSource = GetComponent<CombatDamageSource>();
+        playerStamina = GetComponent<PlayerStamina>();
 
         if (weaponHitbox == null)
             weaponHitbox = GetComponentInChildren<WeaponHitbox>();
@@ -77,17 +80,31 @@ public class PlayerCombatController : MonoBehaviour
 
         if (!attackInProgress)
         {
+            if (!CanStartStaminaAttack())
+                return true;
+
             StartAttack();
             return true;
         }
 
         if (allowAttacking)
         {
+            if (!CanStartStaminaAttack())
+                return true;
+
             StartNextAttack();
             return true;
         }
 
         return true;
+    }
+
+    private bool CanStartStaminaAttack()
+    {
+        if (playerStamina == null)
+            return true;
+
+        return playerStamina.CanUseStaminaAction;
     }
 
     private void HandleWalkingCancelInput()
@@ -116,7 +133,6 @@ public class PlayerCombatController : MonoBehaviour
 
     private void StartNextAttack()
     {
-        // Später wird hier je nach Combo-Stufe eine andere AttackData gesetzt.
         StartAttackCommon(defaultAttackData);
     }
 
@@ -137,10 +153,40 @@ public class PlayerCombatController : MonoBehaviour
             damageSource.SetCurrentAttack(attackData);
         }
 
+        SpendAttackStamina(attackData);
+
         playerState.SetPlayerMovementState(PlayerMovementState.Attack);
 
         playerAnimation.SetRootMotion(true);
         playerAnimation.PlayAttack();
+    }
+
+    private void SpendAttackStamina(AttackData attackData)
+    {
+        if (playerStamina == null)
+            return;
+
+        if (!staminaActionActive)
+        {
+            playerStamina.BeginStaminaAction();
+            staminaActionActive = true;
+        }
+
+        float staminaCost = attackData != null ? attackData.StaminaCost : 0f;
+
+        playerStamina.SpendStamina(staminaCost);
+    }
+
+    private void FinishStaminaActionIfActive()
+    {
+        if (playerStamina == null)
+            return;
+
+        if (!staminaActionActive)
+            return;
+
+        playerStamina.EndStaminaAction();
+        staminaActionActive = false;
     }
 
     private void CancelIntoWalking()
@@ -148,6 +194,8 @@ public class PlayerCombatController : MonoBehaviour
         attackInProgress = false;
         allowAttacking = false;
         allowWalking = false;
+
+        FinishStaminaActionIfActive();
 
         if (damageSource != null)
         {
@@ -196,6 +244,8 @@ public class PlayerCombatController : MonoBehaviour
         attackInProgress = false;
         allowAttacking = false;
         allowWalking = false;
+
+        FinishStaminaActionIfActive();
 
         if (damageSource != null)
         {
