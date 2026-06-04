@@ -100,6 +100,11 @@ public class PlayerStamina : MonoBehaviour
             currentStamina = 0f;
         }
 
+        if (currentStamina <= 0f)
+        {
+            IsSprintExhausted = true;
+        }
+
         if (logStaminaUse)
         {
             Debug.Log($"Stamina: {oldStamina} -> {currentStamina} (-{amount})");
@@ -117,11 +122,6 @@ public class PlayerStamina : MonoBehaviour
         float drainAmount = sprintStaminaDrainPerSecond * deltaTime;
 
         SpendStamina(drainAmount);
-
-        if (currentStamina <= 0f)
-        {
-            IsSprintExhausted = true;
-        }
     }
 
     private void RegenerateStamina()

@@ -19,6 +19,8 @@ GameObject:
   - component: {fileID: 8412315546507683717}
   - component: {fileID: 8817555315779023540}
   - component: {fileID: 8216771362473655051}
+  - component: {fileID: 2697465907427418112}
+  - component: {fileID: 4326179099563021338}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -260,6 +262,44 @@ MonoBehaviour:
   owner: {fileID: 0}
   baseDamage: 10
   defaultAttackData: {fileID: 11400000, guid: 64155f59693cf2744aa4134d7c410e04, type: 2}
+--- !u!114 &2697465907427418112
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 975422624012187956}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 91b9da4eb60c6f145b2ae0e34dbefa03, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CombatDamageSource
+  owner: {fileID: 0}
+  baseDamage: 10
+  defaultAttackData: {fileID: 0}
+--- !u!114 &4326179099563021338
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 975422624012187956}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 26a6d0c60c3c87a44ac5b850f902b6f0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerStamina
+  showDebugStamina: 1
+  debugPosition: {x: 10, y: 10}
+  minimumStaminaForAction: 1
+  maxStamina: 100
+  startWithFullStamina: 1
+  currentStamina: 0
+  staminaRegenPerSecond: 25
+  staminaRegenDelay: 0.5
+  sprintStaminaDrainPerSecond: 18
+  sprintRecoveryPercent: 0.7
+  logStaminaUse: 0
 --- !u!1 &2913438161013370666
 GameObject:
   m_ObjectHideFlags: 0
@@ -429,7 +469,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WeaponHitbox
   owner: {fileID: 975422624012187956}
-  damageSource: {fileID: 8216771362473655051}
+  damageSource: {fileID: 2697465907427418112}
 --- !u!1 &8377745688732106239
 GameObject:
   m_ObjectHideFlags: 0
