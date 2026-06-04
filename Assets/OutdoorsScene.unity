@@ -890,9 +890,30 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CombatDamageSource
   owner: {fileID: 0}
   baseDamage: 10
-  weaponDamage: 0
-  attackDamageMultiplier: 1
-  currentAttackId: DefaultAttack
+  defaultAttackData: {fileID: 0}
+--- !u!114 &1615712793
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1615712770}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 26a6d0c60c3c87a44ac5b850f902b6f0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerStamina
+  showDebugStamina: 1
+  debugPosition: {x: 10, y: 10}
+  minimumStaminaForAction: 1
+  maxStamina: 100
+  startWithFullStamina: 1
+  currentStamina: 0
+  staminaRegenPerSecond: 25
+  staminaRegenDelay: 0.5
+  sprintStaminaDrainPerSecond: 18
+  sprintRecoveryPercent: 0.7
+  logStaminaUse: 0
 --- !u!1001 &1661493765
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1309,6 +1330,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 975422624012187956, guid: 73964f7df13f7654386cd8cd51282a78, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1615712781}
+    - targetCorrespondingSourceObject: {fileID: 975422624012187956, guid: 73964f7df13f7654386cd8cd51282a78, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1615712793}
   m_SourcePrefab: {fileID: 100100000, guid: 73964f7df13f7654386cd8cd51282a78, type: 3}
 --- !u!1001 &8335156270826592834
 PrefabInstance:
