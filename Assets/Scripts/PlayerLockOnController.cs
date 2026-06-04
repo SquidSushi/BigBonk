@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.InputSystem;
+
 
 public class PlayerLockOnController : MonoBehaviour
 {
@@ -55,13 +55,9 @@ public class PlayerLockOnController : MonoBehaviour
     public bool IsLockedOn => CurrentTarget != null;
 
     private PlayerState _playerState;
-
-    private InputAction lockOnAction;
-    private InputAction lookAction;
-
     private float nextValidationTime;
     private float nextTargetSwitchTime;
-
+    private PlayerInputReader _playerInputReader;
     private bool targetSwitchInputLocked;
 
     private readonly Collider[] targetColliders = new Collider[32];
@@ -69,28 +65,20 @@ public class PlayerLockOnController : MonoBehaviour
     private void Awake()
     {
         _playerState = GetComponent<PlayerState>();
-
+        _playerInputReader = GetComponent<PlayerInputReader>();
         if (playerCamera == null)
             playerCamera = GetComponentInChildren<Camera>();
     }
 
     private void Start()
     {
-        lockOnAction = InputSystem.actions.FindAction("LockOn");
-        lookAction = InputSystem.actions.FindAction("Look");
-
-        if (lockOnAction == null)
+        if (_playerInputReader == null)
         {
-            Debug.LogError("PlayerLockOnController: InputAction 'LockOn' wurde nicht gefunden.");
+            Debug.LogError("PlayerLockOnController: PlayerInputReader wurde nicht gefunden.");
             enabled = false;
             return;
         }
-
-        if (lookAction == null)
-        {
-            Debug.LogWarning("PlayerLockOnController: InputAction 'Look' wurde nicht gefunden. Target-Switching mit rechtem Stick funktioniert dadurch nicht.");
-        }
-
+        
         if (_playerState == null)
         {
             Debug.LogError("PlayerLockOnController: PlayerState wurde nicht gefunden.");
@@ -108,7 +96,7 @@ public class PlayerLockOnController : MonoBehaviour
 
     private void Update()
     {
-        if (lockOnAction.WasPressedThisFrame())
+        if (_playerInputReader.LockOnPressed)
         {
             ToggleLockOn();
         }
@@ -177,13 +165,10 @@ public class PlayerLockOnController : MonoBehaviour
         if (!enableTargetSwitching)
             return;
 
-        if (lookAction == null)
-            return;
+        Vector2 lookInput = _playerInputReader.LookInput;
 
         if (CurrentTarget == null)
             return;
-
-        Vector2 lookInput = lookAction.ReadValue<Vector2>();
 
         float neutralThresholdSqr =
             targetSwitchNeutralThreshold *

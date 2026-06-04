@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.InputSystem;
 using UnityEngine.Serialization;
 
 public class CameraController : MonoBehaviour
@@ -35,7 +34,7 @@ public class CameraController : MonoBehaviour
 
     [Header("Auto Rotate")]
     public float autoRotateSpeed = 2f;
-    public float autoRotateDelay = 0.25f;
+    
     public float autoRotateInputThreshold = 0.1f;
     public float autoRotateDeadzone = 0.25f;
     [Tooltip("Wie weich die Auto-Rotate-Richtung wechselt. Höher = träger/weicher.")]
@@ -52,19 +51,10 @@ public class CameraController : MonoBehaviour
     private Vector2 currentLookVelocity = Vector2.zero;
 
     private PlayerInputReader _playerInputReader;
-    private InputAction lookAction;
+    
 
     private void Start()
     {
-        lookAction = InputSystem.actions.FindAction("Look");
-
-        if (lookAction == null)
-        {
-            Debug.LogError("CameraController: InputAction 'Look' wurde nicht gefunden.");
-            enabled = false;
-            return;
-        }
-
         _playerInputReader = GetComponent<PlayerInputReader>();
 
         if (_playerInputReader == null)
@@ -112,10 +102,9 @@ public class CameraController : MonoBehaviour
 
     private void HandleFreeLookCamera()
     {
-        Vector2 rawLookInput = lookAction.ReadValue<Vector2>();
+        Vector2 rawLookInput = _playerInputReader.LookInput;
 
-        InputDevice device = lookAction.activeControl?.device;
-        bool isGamepad = device is Gamepad;
+        bool isGamepad = _playerInputReader.IsLookInputFromGamepad;
 
         if (isGamepad)
         {
@@ -274,7 +263,7 @@ public class CameraController : MonoBehaviour
         float targetInfluence = 0f;
 
         bool allowAutoRotate =
-            Time.time > lastManualLookTime + autoRotateDelay;
+            Time.time > lastManualLookTime;
 
         Vector2 movementInput = _playerInputReader.MovementInput;
 

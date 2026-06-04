@@ -88,7 +88,7 @@
                     "initialStateCheck": false
                 },
                 {
-                    "name": "Lockon",
+                    "name": "LockOn",
                     "type": "Button",
                     "id": "b44dbd32-5913-45c9-9b5d-b56ffa0ec703",
                     "expectedControlType": "",
@@ -446,7 +446,7 @@
                     "interactions": "",
                     "processors": "",
                     "groups": "",
-                    "action": "Lockon",
+                    "action": "LockOn",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
@@ -457,7 +457,7 @@
                     "interactions": "",
                     "processors": "",
                     "groups": "",
-                    "action": "Lockon",
+                    "action": "LockOn",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }
