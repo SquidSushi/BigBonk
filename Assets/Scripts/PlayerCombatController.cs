@@ -8,6 +8,11 @@ public class PlayerCombatController : MonoBehaviour
     private PlayerState playerState;
     private PlayerAnimation playerAnimation;
     private WeaponHitbox weaponHitbox;
+    private CombatDamageSource damageSource;
+    private PlayerStamina playerStamina;
+
+    [Header("Attack Data")]
+    [SerializeField] private AttackData defaultAttackData;
 
     [Header("Root Motion")]
     [SerializeField] private float rootMotionDisableDelay = 0.08f;
@@ -21,11 +26,13 @@ public class PlayerCombatController : MonoBehaviour
     [SerializeField] private bool attackInProgress;
     [SerializeField] private bool allowAttacking;
     [SerializeField] private bool allowWalking;
+
     public int AttackInstanceId { get; private set; }
 
     private float walkingCancelLockedUntil;
     private float ignoreEndEventsUntil;
 
+    private bool staminaActionActive;
     private Coroutine disableRootMotionRoutine;
 
     private void Awake()
@@ -33,6 +40,9 @@ public class PlayerCombatController : MonoBehaviour
         inputReader = GetComponent<PlayerInputReader>();
         playerState = GetComponent<PlayerState>();
         playerAnimation = GetComponent<PlayerAnimation>();
+        damageSource = GetComponent<CombatDamageSource>();
+        playerStamina = GetComponent<PlayerStamina>();
+
         if (weaponHitbox == null)
             weaponHitbox = GetComponentInChildren<WeaponHitbox>();
     }
@@ -65,23 +75,36 @@ public class PlayerCombatController : MonoBehaviour
     
     private bool HandleAttackInput()
     {
-        if (!inputReader.attackPressed)
+        if (!inputReader.AttackPressed)
             return false;
 
-        // Wenn Attack gedrückt wurde, soll in diesem Frame kein Walking-Cancel passieren.
         if (!attackInProgress)
         {
+            if (!CanStartStaminaAttack())
+                return true;
+
             StartAttack();
             return true;
         }
 
         if (allowAttacking)
         {
+            if (!CanStartStaminaAttack())
+                return true;
+
             StartNextAttack();
             return true;
         }
 
         return true;
+    }
+
+    private bool CanStartStaminaAttack()
+    {
+        if (playerStamina == null)
+            return true;
+
+        return playerStamina.CanUseStaminaAction;
     }
 
     private void HandleWalkingCancelInput()
@@ -105,17 +128,15 @@ public class PlayerCombatController : MonoBehaviour
     {
         attackInProgress = true;
 
-        StartAttackCommon();
+        StartAttackCommon(defaultAttackData);
     }
 
     private void StartNextAttack()
     {
-        // attackInProgress bleibt true.
-        // Wir starten nur die Attack-Animation neu.
-        StartAttackCommon();
+        StartAttackCommon(defaultAttackData);
     }
 
-    private void StartAttackCommon()
+    private void StartAttackCommon(AttackData attackData)
     {
         AttackInstanceId++;
 
@@ -127,10 +148,45 @@ public class PlayerCombatController : MonoBehaviour
 
         StopDisableRootMotionRoutine();
 
+        if (damageSource != null)
+        {
+            damageSource.SetCurrentAttack(attackData);
+        }
+
+        SpendAttackStamina(attackData);
+
         playerState.SetPlayerMovementState(PlayerMovementState.Attack);
 
         playerAnimation.SetRootMotion(true);
         playerAnimation.PlayAttack();
+    }
+
+    private void SpendAttackStamina(AttackData attackData)
+    {
+        if (playerStamina == null)
+            return;
+
+        if (!staminaActionActive)
+        {
+            playerStamina.BeginStaminaAction();
+            staminaActionActive = true;
+        }
+
+        float staminaCost = attackData != null ? attackData.StaminaCost : 0f;
+
+        playerStamina.SpendStamina(staminaCost);
+    }
+
+    private void FinishStaminaActionIfActive()
+    {
+        if (playerStamina == null)
+            return;
+
+        if (!staminaActionActive)
+            return;
+
+        playerStamina.EndStaminaAction();
+        staminaActionActive = false;
     }
 
     private void CancelIntoWalking()
@@ -138,6 +194,13 @@ public class PlayerCombatController : MonoBehaviour
         attackInProgress = false;
         allowAttacking = false;
         allowWalking = false;
+
+        FinishStaminaActionIfActive();
+
+        if (damageSource != null)
+        {
+            damageSource.ClearCurrentAttack();
+        }
 
         playerState.SetPlayerMovementState(PlayerMovementState.Idling);
 
@@ -159,8 +222,6 @@ public class PlayerCombatController : MonoBehaviour
         if (!attackInProgress)
             return;
 
-        // Verhindert, dass ein altes/blendendes Event direkt nach einem Attack-Restart
-        // Walking-Cancel wieder öffnet.
         if (Time.time < walkingCancelLockedUntil)
             return;
 
@@ -172,8 +233,6 @@ public class PlayerCombatController : MonoBehaviour
         if (!attackInProgress)
             return;
 
-        // Verhindert, dass ein altes End-Event von der vorherigen Attack
-        // die neue Attack sofort beendet.
         if (Time.time < ignoreEndEventsUntil)
             return;
 
@@ -185,6 +244,13 @@ public class PlayerCombatController : MonoBehaviour
         attackInProgress = false;
         allowAttacking = false;
         allowWalking = false;
+
+        FinishStaminaActionIfActive();
+
+        if (damageSource != null)
+        {
+            damageSource.ClearCurrentAttack();
+        }
 
         playerAnimation.FinishAttack();
 

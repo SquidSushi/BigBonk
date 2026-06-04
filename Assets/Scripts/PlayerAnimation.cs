@@ -5,11 +5,21 @@ public class PlayerAnimation : MonoBehaviour
     [SerializeField] private Animator animator;
     [SerializeField] private float blendSpeed = 5f;
 
+    [Header("Lock On Animation")]
+    [SerializeField] private float lockOnDirectionBlendSpeed = 10f;
+    [Tooltip("Kleine Stick-Werte unter diesem Wert werden für Lock-on-Animationen ignoriert.")]
+    [SerializeField] private float lockOnAnimationInputDeadzone = 0.15f;
+    
     private PlayerState _playerState;
     private PlayerInputReader input;
     private PlayerController _playerController;
 
     private static readonly int inputXHash = Animator.StringToHash("InputX");
+
+    private static readonly int useLockOnMovementHash = Animator.StringToHash("UseLockOnMovement");
+    private static readonly int lockOnXHash = Animator.StringToHash("LockOnX");
+    private static readonly int lockOnYHash = Animator.StringToHash("LockOnY");
+
     private static readonly int isGroundedHash = Animator.StringToHash("IsGrounded");
     private static readonly int isFallingHash = Animator.StringToHash("IsFalling");
 
@@ -18,6 +28,9 @@ public class PlayerAnimation : MonoBehaviour
     private static readonly int attackFinishedHash = Animator.StringToHash("AttackFinished");
 
     private float currentBlend;
+
+    private float currentLockOnX;
+    private float currentLockOnY;
 
     private void Awake()
     {
@@ -47,7 +60,29 @@ public class PlayerAnimation : MonoBehaviour
         UpdateMovementBlend();
     }
 
+    private float ApplyAnimationDeadzone(float value, float deadzone)
+    {
+        float absValue = Mathf.Abs(value);
+
+        if (absValue < deadzone)
+            return 0f;
+
+        // Skaliert den Bereich nach der Deadzone wieder auf 0..1.
+        // Beispiel: deadzone 0.15
+        // Input 0.15 -> 0
+        // Input 1.00 -> 1
+        float normalizedValue = Mathf.InverseLerp(deadzone, 1f, absValue);
+
+        return normalizedValue * Mathf.Sign(value);
+    }
+    
     private void UpdateMovementBlend()
+    {
+        UpdateNormalMovementBlend();
+        UpdateLockOnMovementBlend();
+    }
+
+    private void UpdateNormalMovementBlend()
     {
         float speed = _playerController.CurrentSpeed;
 
@@ -83,6 +118,55 @@ public class PlayerAnimation : MonoBehaviour
 
         currentBlend = Mathf.Lerp(currentBlend, targetBlend, blendSpeed * Time.deltaTime);
         animator.SetFloat(inputXHash, currentBlend);
+    }
+
+    private void UpdateLockOnMovementBlend()
+    {
+        bool isLockedOn = _playerState.IsLockedOn();
+        bool isSprinting = input.SprintToggledOn;
+        bool isGrounded = _playerState.InGroundedState();
+        bool isAttacking = _playerState.CurrentPlayerMovementState == PlayerMovementState.Attack;
+
+        bool shouldUseLockOnMovement =
+            isLockedOn &&
+            !isSprinting &&
+            isGrounded &&
+            !isAttacking;
+
+        animator.SetBool(useLockOnMovementHash, shouldUseLockOnMovement);
+
+        Vector2 moveInput = input.MovementInput;
+
+        float targetX = 0f;
+        float targetY = 0f;
+
+        if (shouldUseLockOnMovement)
+        {
+            targetX = ApplyAnimationDeadzone(
+                moveInput.x,
+                lockOnAnimationInputDeadzone
+            );
+
+            targetY = ApplyAnimationDeadzone(
+                moveInput.y,
+                lockOnAnimationInputDeadzone
+            );
+        }
+
+        currentLockOnX = Mathf.Lerp(
+            currentLockOnX,
+            targetX,
+            lockOnDirectionBlendSpeed * Time.deltaTime
+        );
+
+        currentLockOnY = Mathf.Lerp(
+            currentLockOnY,
+            targetY,
+            lockOnDirectionBlendSpeed * Time.deltaTime
+        );
+
+        animator.SetFloat(lockOnXHash, currentLockOnX);
+        animator.SetFloat(lockOnYHash, currentLockOnY);
     }
 
     public void PlayAttack()
