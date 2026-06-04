@@ -50,6 +50,8 @@ public class PlayerController : MonoBehaviour
     private PlayerState _playerState;
     private PlayerCombatController _playerCombatController;
     private PlayerLockOnController _playerLockOnController;
+    private PlayerStamina _playerStamina;
+    private bool sprintStaminaActionActive;
 
     private void Awake()
     {
@@ -64,6 +66,7 @@ public class PlayerController : MonoBehaviour
         _playerState = GetComponent<PlayerState>();
         _playerCombatController = GetComponent<PlayerCombatController>();
         _playerLockOnController = GetComponent<PlayerLockOnController>();
+        _playerStamina = GetComponent<PlayerStamina>();
     }
 
     private void Update()
@@ -91,6 +94,8 @@ public class PlayerController : MonoBehaviour
         }
         else
         {
+            StopSprintStaminaActionIfActive();
+
             HandleAttackVerticalMovementOnly();
             HandleAttackRotation();
         }
@@ -99,7 +104,10 @@ public class PlayerController : MonoBehaviour
     private void UpdateMovementState()
     {
         bool isMovingLaterally = IsMovingLaterally();
-        bool isSprinting = _playerInputReader.SprintToggledOn && isMovingLaterally;
+        bool isSprinting =
+            _playerInputReader.SprintToggledOn &&
+            isMovingLaterally &&
+            CanSprintWithStamina();
         bool isRunning = !_playerInputReader.SprintToggledOn && isMovingLaterally && targetSpeed >= runSpeed;
         bool isWalking = !_playerInputReader.SprintToggledOn && isMovingLaterally && targetSpeed <= runSpeed;
         bool isGrounded = IsGrounded();
@@ -308,6 +316,7 @@ public class PlayerController : MonoBehaviour
         _characterController.Move(newVelocity * Time.deltaTime);
 
         HandleCharacterRotation(movementDirection, isSprinting);
+        HandleSprintStamina(isSprinting);
     }
 
     private void HandleCharacterRotation(Vector3 movementDirection, bool isSprinting)
@@ -434,5 +443,44 @@ public class PlayerController : MonoBehaviour
     private bool IsGrounded()
     {
         return _characterController.isGrounded;
+    }
+    private bool CanSprintWithStamina()
+    {
+        if (_playerStamina == null)
+            return true;
+
+        return _playerStamina.CanSprint;
+    }
+
+    private void HandleSprintStamina(bool isSprinting)
+    {
+        if (_playerStamina == null)
+            return;
+
+        if (isSprinting)
+        {
+            if (!sprintStaminaActionActive)
+            {
+                _playerStamina.BeginStaminaAction();
+                sprintStaminaActionActive = true;
+            }
+
+            _playerStamina.SpendSprintStamina(Time.deltaTime);
+            return;
+        }
+
+        StopSprintStaminaActionIfActive();
+    }
+
+    private void StopSprintStaminaActionIfActive()
+    {
+        if (_playerStamina == null)
+            return;
+
+        if (!sprintStaminaActionActive)
+            return;
+
+        _playerStamina.EndStaminaAction();
+        sprintStaminaActionActive = false;
     }
 }
