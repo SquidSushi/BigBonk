@@ -3,10 +3,14 @@ using UnityEngine;
 
 public class WeaponHitbox : MonoBehaviour
 {
+    [Header("References")]
     [SerializeField] private GameObject owner;
+    [SerializeField] private CombatDamageSource damageSource;
 
     private Collider hitboxCollider;
-    private readonly HashSet<IHittable> alreadyHitTargets = new HashSet<IHittable>();
+
+    private readonly HashSet<IDamageable> alreadyHitTargets =
+        new HashSet<IDamageable>();
 
     private void Awake()
     {
@@ -14,6 +18,19 @@ public class WeaponHitbox : MonoBehaviour
 
         if (owner == null)
             owner = transform.root.gameObject;
+
+        if (damageSource == null)
+            damageSource = GetComponentInParent<CombatDamageSource>();
+
+        if (damageSource == null && owner != null)
+            damageSource = owner.GetComponentInChildren<CombatDamageSource>();
+
+        if (damageSource == null)
+        {
+            Debug.LogWarning(
+                $"WeaponHitbox on {gameObject.name}: Kein CombatDamageSource gefunden. Treffer machen keinen Schaden."
+            );
+        }
 
         SetHitboxActive(false);
     }
@@ -41,25 +58,54 @@ public class WeaponHitbox : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        if (!hitboxCollider.enabled)
+        if (hitboxCollider == null || !hitboxCollider.enabled)
             return;
 
-        if (other.gameObject == owner)
+        if (owner != null)
+        {
+            if (other.gameObject == owner)
+                return;
+
+            if (other.transform.IsChildOf(owner.transform))
+                return;
+        }
+
+        IDamageable damageable = other.GetComponentInParent<IDamageable>();
+
+        if (damageable == null)
             return;
 
-        IHittable hittable = other.GetComponentInParent<IHittable>();
-
-        if (hittable == null)
+        if (alreadyHitTargets.Contains(damageable))
             return;
 
-        if (alreadyHitTargets.Contains(hittable))
+        alreadyHitTargets.Add(damageable);
+
+        GameObject targetObject = other.gameObject;
+
+        if (damageable is Component damageableComponent)
+        {
+            targetObject = damageableComponent.gameObject;
+        }
+
+        Vector3 hitPoint = other.ClosestPoint(transform.position);
+
+        if (damageSource == null)
+        {
+            Debug.LogWarning(
+                $"WeaponHitbox on {gameObject.name}: Treffer auf {targetObject.name}, aber keine DamageSource vorhanden."
+            );
+
             return;
+        }
 
-        alreadyHitTargets.Add(hittable);
+        DamageInfo damageInfo = damageSource.CreateDamageInfo(
+            gameObject,
+            targetObject,
+            hitPoint
+        );
 
-        hittable.TakeHit(owner);
+        damageable.TakeDamage(damageInfo);
     }
-    
     
     private void OnDrawGizmos()
     {

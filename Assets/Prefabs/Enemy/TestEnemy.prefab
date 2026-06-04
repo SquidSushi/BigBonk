@@ -12,9 +12,10 @@ GameObject:
   - component: {fileID: 8978018119286503281}
   - component: {fileID: 1443089173935760946}
   - component: {fileID: 693057590052826697}
-  - component: {fileID: 7266265575550011924}
   - component: {fileID: 1353671390685126147}
   - component: {fileID: 7156387638030819511}
+  - component: {fileID: 5893344846809326578}
+  - component: {fileID: 4049060491558559802}
   m_Layer: 7
   m_Name: TestEnemy
   m_TagString: Untagged
@@ -118,18 +119,6 @@ CapsuleCollider:
   m_Height: 2
   m_Direction: 1
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &7266265575550011924
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 774898392347147248}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4314a0f6330eef42bea57c741fb8a01, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: '::'
 --- !u!54 &1353671390685126147
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -172,6 +161,43 @@ MonoBehaviour:
   lockOnPoint: {fileID: 6420664203532913887}
   isTargetable: 1
   priority: 1
+--- !u!114 &5893344846809326578
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 774898392347147248}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 537c572526947ef42a81801311cdb1eb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Health
+  maxHealth: 30
+  startWithFullHealth: 1
+  currentHealth: 0
+  logDamage: 1
+--- !u!114 &4049060491558559802
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 774898392347147248}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4a001c3d194c96a41b926554df62eb91, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyDeathHandler
+  health: {fileID: 5893344846809326578}
+  lockOnTarget: {fileID: 7156387638030819511}
+  behavioursToDisable: []
+  collidersToDisable:
+  - {fileID: 693057590052826697}
+  changeColorOnDeath: 1
+  deathColor: {r: 0.8867924, g: 0, b: 0, a: 1}
+  renderersToTint:
+  - {fileID: 1443089173935760946}
 --- !u!1 &2659108556450089725
 GameObject:
   m_ObjectHideFlags: 0

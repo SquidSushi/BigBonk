@@ -472,6 +472,17 @@ MonoBehaviour:
   m_AreaLightEmissiveMeshShadowCastingMode: 0
   m_AreaLightEmissiveMeshMotionVectorGenerationMode: 0
   m_AreaLightEmissiveMeshLayer: -1
+--- !u!114 &387624872 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 7156387638030819511, guid: 31d6c68e94b8b4043bb34bbe8b6faf48, type: 3}
+  m_PrefabInstance: {fileID: 8335156270826592834}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9d7553472e6fd7a499fbe0045c663457, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LockOnTarget
 --- !u!1 &432432459
 GameObject:
   m_ObjectHideFlags: 0
@@ -860,6 +871,28 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1615712770 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 975422624012187956, guid: 73964f7df13f7654386cd8cd51282a78, type: 3}
+  m_PrefabInstance: {fileID: 7028149653264754068}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1615712781
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1615712770}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 91b9da4eb60c6f145b2ae0e34dbefa03, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CombatDamageSource
+  owner: {fileID: 0}
+  baseDamage: 10
+  weaponDamage: 0
+  attackDamageMultiplier: 1
+  currentAttackId: DefaultAttack
 --- !u!1001 &1661493765
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1204,6 +1237,14 @@ PrefabInstance:
       propertyPath: m_Name
       value: Player
       objectReference: {fileID: 0}
+    - target: {fileID: 2151813214228543984, guid: 73964f7df13f7654386cd8cd51282a78, type: 3}
+      propertyPath: damageSource
+      value: 
+      objectReference: {fileID: 1615712781}
+    - target: {fileID: 4519835721797427174, guid: 73964f7df13f7654386cd8cd51282a78, type: 3}
+      propertyPath: sprintTurnSpeed
+      value: 5
+      objectReference: {fileID: 0}
     - target: {fileID: 5406081347212514150, guid: 73964f7df13f7654386cd8cd51282a78, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -1252,10 +1293,22 @@ PrefabInstance:
       propertyPath: lockOnCameraPitchOffset
       value: 10
       objectReference: {fileID: 0}
+    - target: {fileID: 8817555315779023540, guid: 73964f7df13f7654386cd8cd51282a78, type: 3}
+      propertyPath: mouseTargetSwitchThreshold
+      value: 20
+      objectReference: {fileID: 0}
+    - target: {fileID: 8817555315779023540, guid: 73964f7df13f7654386cd8cd51282a78, type: 3}
+      propertyPath: requireMouseStopBeforeNextSwitch
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
-    m_RemovedGameObjects: []
+    m_RemovedGameObjects:
+    - {fileID: 6523655894138505896, guid: 73964f7df13f7654386cd8cd51282a78, type: 3}
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 975422624012187956, guid: 73964f7df13f7654386cd8cd51282a78, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1615712781}
   m_SourcePrefab: {fileID: 100100000, guid: 73964f7df13f7654386cd8cd51282a78, type: 3}
 --- !u!1001 &8335156270826592834
 PrefabInstance:
@@ -1269,6 +1322,18 @@ PrefabInstance:
       propertyPath: m_Name
       value: TestEnemy
       objectReference: {fileID: 0}
+    - target: {fileID: 4049060491558559802, guid: 31d6c68e94b8b4043bb34bbe8b6faf48, type: 3}
+      propertyPath: lockOnTarget
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 4049060491558559802, guid: 31d6c68e94b8b4043bb34bbe8b6faf48, type: 3}
+      propertyPath: behavioursToDisable.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4049060491558559802, guid: 31d6c68e94b8b4043bb34bbe8b6faf48, type: 3}
+      propertyPath: 'behavioursToDisable.Array.data[0]'
+      value: 
+      objectReference: {fileID: 387624872}
     - target: {fileID: 7205881213120825088, guid: 31d6c68e94b8b4043bb34bbe8b6faf48, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0.065
