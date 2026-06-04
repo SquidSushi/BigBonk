@@ -16,8 +16,9 @@ GameObject:
   - component: {fileID: 7156387638030819511}
   - component: {fileID: 5893344846809326578}
   - component: {fileID: 4049060491558559802}
-  - component: {fileID: 3943357022625645093}
-  - component: {fileID: 747387320313122310}
+  - component: {fileID: 1741618897049571238}
+  - component: {fileID: 1045638263737889322}
+  - component: {fileID: 4181299850709720214}
   m_Layer: 7
   m_Name: TestEnemy
   m_TagString: Untagged
@@ -204,7 +205,7 @@ MonoBehaviour:
   deathColor: {r: 0.8867924, g: 0, b: 0, a: 1}
   renderersToTint:
   - {fileID: 1443089173935760946}
---- !u!114 &3943357022625645093
+--- !u!114 &1741618897049571238
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -216,10 +217,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c3dea72819d0e2e48a0274e5f8cd8158, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyAnimation
-  animator: {fileID: 747387320313122310}
+  animator: {fileID: 1045638263737889322}
   health: {fileID: 5893344846809326578}
   playHitReactionOnDeath: 0
---- !u!95 &747387320313122310
+--- !u!95 &1045638263737889322
 Animator:
   serializedVersion: 7
   m_ObjectHideFlags: 0
@@ -241,6 +242,25 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &4181299850709720214
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 774898392347147248}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ed4661d11d1ea1a4cb20c9e1c3943e3f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyHitVFX
+  health: {fileID: 5893344846809326578}
+  hitEffectAsset: {fileID: 8926484042661614526, guid: d964e5751f87e1a43925279985517ab2, type: 3}
+  fallbackSpawnPoint: {fileID: 6420664203532913887}
+  spawnOffset: 0.15
+  alignToHitDirection: 1
+  invertDirection: 1
+  destroyDelay: 2
 --- !u!1 &2659108556450089725
 GameObject:
   m_ObjectHideFlags: 0
