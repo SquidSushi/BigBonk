@@ -70,10 +70,10 @@ MonoBehaviour:
   - title: Base Loop
     position:
       serializedVersion: 2
-      x: 5377
+      x: 5379
       y: 2008
-      width: 476
-      height: 1510
+      width: 473
+      height: 1549
     contents:
     - model: {fileID: 114350483966675359}
       id: 0
@@ -94,7 +94,7 @@ MonoBehaviour:
     x: 4803
     y: 2008
     width: 1050
-    height: 1549
+    height: 1625
 --- !u!114 &114350483966675359
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -572,7 +572,7 @@ MonoBehaviour:
       m_Type:
         m_SerializableType: System.Boolean, mscorlib, Version=4.0.0.0, Culture=neutral,
           PublicKeyToken=b77a5c561934e089
-      m_SerializableObject: True
+      m_SerializableObject: False
     m_Space: -1
   m_Property:
     name: _vfx_enabled
@@ -597,7 +597,7 @@ MonoBehaviour:
   m_Parent: {fileID: 114350483966674976}
   m_Children:
   - {fileID: 114350483966675492}
-  m_UIPosition: {x: 5401, y: 2853}
+  m_UIPosition: {x: 5404, y: 2853}
   m_UICollapsed: 0
   m_UISuperCollapsed: 0
   m_InputSlots: []
@@ -796,7 +796,7 @@ MonoBehaviour:
   m_Parent: {fileID: 114350483966674976}
   m_Children:
   - {fileID: 114350483966675467}
-  m_UIPosition: {x: 5403, y: 3143}
+  m_UIPosition: {x: 5404, y: 3143}
   m_UICollapsed: 0
   m_UISuperCollapsed: 0
   m_InputSlots:
@@ -1842,7 +1842,7 @@ MonoBehaviour:
   - {fileID: 114350483966675519}
   - {fileID: 114350483966675520}
   m_UIPosition: {x: 0, y: 0}
-  m_UICollapsed: 1
+  m_UICollapsed: 0
   m_UISuperCollapsed: 0
   m_MasterSlot: {fileID: 114350483966675516}
   m_MasterData:
@@ -1851,7 +1851,7 @@ MonoBehaviour:
       m_Type:
         m_SerializableType: UnityEngine.Color, UnityEngine.CoreModule, Version=0.0.0.0,
           Culture=neutral, PublicKeyToken=null
-      m_SerializableObject: '{"r":1.0,"g":1.0,"b":1.0,"a":1.0}'
+      m_SerializableObject: '{"r":0.5005742311477661,"g":0.0,"b":0.0,"a":1.0}'
     m_Space: -1
   m_Property:
     name: _Color
