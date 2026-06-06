@@ -15,4 +15,5 @@ MonoBehaviour:
   attackId: DefaultAttack
   damageMultiplier: 1
   flatDamageBonus: 0
+  staminaCost: 20
   debugName: Default Attack
