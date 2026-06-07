@@ -164,8 +164,25 @@ public class PlayerController : MonoBehaviour
         bool isGrounded = _isGrounded;
 
         /*
-         * Step-Offset-Logik unverändert aus deiner Version.
+         * Step Offset auf dem Boden immer wiederherstellen.
          */
+        if (isGrounded)
+        {
+            _characterController.stepOffset = _stepOffset;
+        }
+        /*
+         * Beim Hochspringen sofort deaktivieren.
+         *
+         * Beim Herunterfallen erst nach einem vollständigen
+         * Airborne-Frame deaktivieren. Dadurch deaktiviert ein
+         * kurzer Groundcheck-Aussetzer vor einer Stufe den
+         * Step Offset nicht sofort.
+         */
+        else if (_verticalVelocity > 0f || !wasGroundedLastFrame)
+        {
+            _characterController.stepOffset = 0f;
+        }
+
         if (!isGrounded)
         {
             if (_verticalVelocity > 0f)
@@ -173,20 +190,12 @@ public class PlayerController : MonoBehaviour
                 _playerState.SetPlayerMovementState(
                     PlayerMovementState.Jumping
                 );
-
-                _characterController.stepOffset = 0f;
             }
-            else if (_verticalVelocity < 0f)
+            else
             {
                 _playerState.SetPlayerMovementState(
                     PlayerMovementState.Falling
                 );
-
-                _characterController.stepOffset = 0f;
-            }
-            else
-            {
-                _characterController.stepOffset = _stepOffset;
             }
 
             return;
@@ -517,24 +526,28 @@ public class PlayerController : MonoBehaviour
             }
         }
 
-        /*
-         * Zuerst die horizontale und vertikale Geschwindigkeit
-         * zur vollständigen Bewegung zusammensetzen.
-         */
         Vector3 finalVelocity =
             newLateralVelocity +
             Vector3.up * _verticalVelocity;
 
-        /*
-         * Die Methode wird immer geprüft.
-         *
-         * Auf normalem Boden und erlaubten Slopes verändert sie
-         * nichts. Dadurch muss IsGroundedWhileGrounded nicht
-         * verändert werden und das Step-Offset-System bleibt
-         * davon unberührt.
-         */
-        finalVelocity =
-            HandleSteepWalls(finalVelocity);
+/*
+ * Wallsliding erst anwenden, wenn der Spieler eindeutig
+ * in der Luft ist.
+ *
+ * Dadurch wird die senkrechte Vorderseite einer normalen
+ * Stufe nicht als Wallslide-Fläche behandelt.
+ */
+        bool canHandleSteepWall =
+            !isGrounded &&
+            !wasGroundedLastFrame &&
+            _verticalVelocity < 0f &&
+            _characterController.stepOffset <= 0f;
+
+        if (canHandleSteepWall)
+        {
+            finalVelocity =
+                HandleSteepWalls(finalVelocity);
+        }
 
         CurrentSpeed = new Vector3(
             finalVelocity.x,
@@ -779,21 +792,14 @@ public class PlayerController : MonoBehaviour
             validAngle;
     }
 
-    private Vector3 HandleSteepWalls(
-        Vector3 velocity
-    )
+    private Vector3 HandleSteepWalls(Vector3 velocity)
     {
         Vector3 normal =
-            CharacterControllerUtils
-                .GetNormalWithSphereCast(
-                    _characterController,
-                    _groundLayers
-                );
+            CharacterControllerUtils.GetNormalWithSphereCast(
+                _characterController,
+                _groundLayers
+            );
 
-        /*
-         * Kein gültiger Treffer:
-         * Geschwindigkeit unverändert zurückgeben.
-         */
         if (normal.sqrMagnitude < 0.001f)
         {
             return velocity;
@@ -806,18 +812,9 @@ public class PlayerController : MonoBehaviour
             );
 
         bool isTooSteep =
-            angle >
-            _characterController.slopeLimit;
+            angle > _characterController.slopeLimit;
 
-        /*
-         * Nur beim Fallen und nur auf einer zu steilen Fläche
-         * die gesamte Velocity auf die Wand-/Slope-Ebene
-         * projizieren.
-         */
-        if (
-            isTooSteep &&
-            velocity.y < 0f
-        )
+        if (isTooSteep && velocity.y < 0f)
         {
             velocity =
                 Vector3.ProjectOnPlane(
