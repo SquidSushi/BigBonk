@@ -43,6 +43,14 @@ public class PlayerController : MonoBehaviour
     [Header("Attack Rotation")]
     public float attackTurnSpeed = 360f;
     public float maxAttackRotationBudget = 180f;
+    
+    [Header("Environment Details")]
+    [SerializeField] private LayerMask _groundLayers;
+
+    [SerializeField] private float groundCheckRadius = 0.2f;
+
+    [Tooltip("Die Sphere sollte leicht über den Fußpunkt geschoben werden.")]
+    [SerializeField] private float groundCheckYOffset = 0.05f;
 
     private int lastSeenAttackInstanceId;
     
@@ -62,7 +70,10 @@ public class PlayerController : MonoBehaviour
     private PlayerLockOnController _playerLockOnController;
     private PlayerStamina _playerStamina;
     private bool sprintStaminaActionActive;
-
+    private float _antiBump;
+    private bool _isGrounded;
+    
+    
     private void Awake()
     {
         _playerInputReader = GetComponent<PlayerInputReader>();
@@ -78,11 +89,14 @@ public class PlayerController : MonoBehaviour
         _playerLockOnController = GetComponent<PlayerLockOnController>();
         _playerStamina = GetComponent<PlayerStamina>();
         
-        wasGroundedLastFrame = _characterController.isGrounded;
+        
+        _antiBump = sprintSpeed;
     }
 
     private void Update()
     {
+        _isGrounded = IsGrounded();
+        
         bool isAttacking =
             _playerCombatController != null &&
             _playerCombatController.IsAttackInProgress();
@@ -115,15 +129,43 @@ public class PlayerController : MonoBehaviour
 
     private void UpdateMovementState()
     {
+        bool isGrounded = _isGrounded;
+
+        if (!isGrounded)
+        {
+            if (_verticalVelocity > 0f)
+            {
+                _playerState.SetPlayerMovementState(
+                    PlayerMovementState.Jumping
+                );
+            }
+            else
+            {
+                _playerState.SetPlayerMovementState(
+                    PlayerMovementState.Falling
+                );
+            }
+
+            return;
+        }
+
         bool isMovingLaterally = IsMovingLaterally();
+
         bool isSprinting =
             _playerInputReader.SprintToggledOn &&
             isMovingLaterally &&
             CanSprintWithStamina();
-        bool isRunning = !_playerInputReader.SprintToggledOn && isMovingLaterally && targetSpeed >= runSpeed;
-        bool isWalking = !_playerInputReader.SprintToggledOn && isMovingLaterally && targetSpeed <= runSpeed;
-        bool isGrounded = IsGrounded();
-        
+
+        bool isRunning =
+            !_playerInputReader.SprintToggledOn &&
+            isMovingLaterally &&
+            targetSpeed >= runSpeed;
+
+        bool isWalking =
+            !_playerInputReader.SprintToggledOn &&
+            isMovingLaterally &&
+            targetSpeed <= runSpeed;
+
         PlayerMovementState lateralState =
             isSprinting ? PlayerMovementState.Sprinting :
             isRunning   ? PlayerMovementState.Running :
@@ -131,31 +173,22 @@ public class PlayerController : MonoBehaviour
             PlayerMovementState.Idling;
 
         _playerState.SetPlayerMovementState(lateralState);
-        
-        if (!isGrounded && _verticalVelocity > 0f)
-        {
-            _playerState.SetPlayerMovementState(PlayerMovementState.Jumping);
-        }
-        else if (!isGrounded && _verticalVelocity < 0f)
-        {
-            _playerState.SetPlayerMovementState(PlayerMovementState.Falling);
-        }
     }
 
     private void HandleVerticalMovement()
     {
-        bool isGrounded = _playerState.InGroundedState();
+        bool isGrounded = _isGrounded;
+        
+        _verticalVelocity -= gravity * Time.deltaTime;
         
         if (isGrounded && _verticalVelocity < 0f)
         {
-            _verticalVelocity = 0f;
+            _verticalVelocity = -_antiBump;
         }
-
-        _verticalVelocity -= gravity * Time.deltaTime;
 
         if (_playerInputReader.JumpPressed && isGrounded)
         {
-            _verticalVelocity += Mathf.Sqrt(jumpHeight * 3 * gravity);
+            _verticalVelocity += _antiBump + Mathf.Sqrt(jumpHeight * 3 * gravity);
         }
     }
 
@@ -256,7 +289,7 @@ public class PlayerController : MonoBehaviour
     
     private void HandleLateralMovement()
 {
-    bool isGrounded = IsGrounded();
+    bool isGrounded = _isGrounded;
 
     bool isSprinting =
         isGrounded &&
@@ -535,8 +568,43 @@ public class PlayerController : MonoBehaviour
 
     private bool IsGrounded()
     {
+        bool grounded = _playerState.InGroundedState() ? IsGroundedWhileGrounded() : IsGroundedWhileAirborne();
+        
+        return grounded;
+    }
+
+    private bool IsGroundedWhileGrounded()
+    {
+        Vector3 spherePosition =
+            transform.position +
+            Vector3.up * groundCheckYOffset;
+
+        return Physics.CheckSphere(
+            spherePosition,
+            groundCheckRadius,
+            _groundLayers,
+            QueryTriggerInteraction.Ignore
+        );
+    }
+    
+    private void OnDrawGizmosSelected()
+    {
+        Vector3 spherePosition =
+            transform.position +
+            Vector3.up * groundCheckYOffset;
+
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawWireSphere(
+            spherePosition,
+            groundCheckRadius
+        );
+    }
+
+    private bool IsGroundedWhileAirborne()
+    {
         return _characterController.isGrounded;
     }
+    
     private bool CanSprintWithStamina()
     {
         if (_playerStamina == null)
