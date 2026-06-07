@@ -71,8 +71,14 @@ public class PlayerController : MonoBehaviour
 
     [SerializeField] private float groundCheckRadius = 0.2f;
 
-    [Tooltip("Die Sphere sollte leicht über den Fußpunkt geschoben werden.")]
+    [Tooltip("Die Groundcheck-Sphere startet so weit über dem Fußpunkt.")]
     [SerializeField] private float groundCheckYOffset = 0.05f;
+
+    [Tooltip(
+        "Wie weit unterhalb des Fußpunkts nach begehbarem Boden gesucht wird. " +
+        "Klein halten, damit der Spieler nicht über dem Boden schwebt."
+    )]
+    [SerializeField] private float groundCheckDistance = 0.12f;
 
     private int lastSeenAttackInstanceId;
 
@@ -86,6 +92,20 @@ public class PlayerController : MonoBehaviour
     private float _verticalVelocity;
     private float remainingAttackRotation;
     private float airborneLateralSpeedLimit;
+
+    /*
+     * Eigene horizontale Sollgeschwindigkeit.
+     *
+     * CharacterController.velocity enthält die durch Kollisionen bereits
+     * veränderte Bewegung. Würden wir diese wieder als Grundlage verwenden,
+     * bleibt bei diagonalem Kontakt ein seitlicher Geschwindigkeitsrest übrig,
+     * während frontaler Kontakt fast alles löscht. Genau dadurch kann sich das
+     * Step-Verhalten abhängig vom Eingabewinkel unterscheiden.
+     */
+    private Vector3 _lateralVelocity;
+
+    private readonly RaycastHit[] _groundCheckHits =
+        new RaycastHit[8];
 
     private bool wasGroundedLastFrame;
     private bool sprintStaminaActionActive;
@@ -315,6 +335,10 @@ public class PlayerController : MonoBehaviour
             verticalMove * Time.deltaTime
         );
 
+        // Entspricht dem bisherigen Verhalten: Während eines Angriffs
+        // wird horizontales Movement vollständig gestoppt.
+        _lateralVelocity = Vector3.zero;
+
         CurrentSpeed = 0f;
         CurrentMovementDirection = Vector3.zero;
     }
@@ -464,12 +488,7 @@ public class PlayerController : MonoBehaviour
             TransformedInput(
                 _playerInputReader.MovementInput
             );
-        Debug.Log(
-            $"Raw: {_playerInputReader.MovementInput} | " +
-            $"Raw Magnitude: {_playerInputReader.MovementInput.magnitude:F3} | " +
-            $"Transformed Magnitude: {transformedInput.magnitude:F3} | " +
-            $"CC Velocity: {_characterController.velocity}"
-        );
+
         Vector3 movementDirection =
             cameraRightXZ * transformedInput.x +
             cameraForwardXZ * transformedInput.y;
@@ -479,12 +498,6 @@ public class PlayerController : MonoBehaviour
                 ? movementDirection.normalized
                 : Vector3.zero;
 
-        Vector3 currentLateralVelocity = new Vector3(
-            _characterController.velocity.x,
-            0f,
-            _characterController.velocity.z
-        );
-
         bool justLeftGround =
             !isGrounded &&
             wasGroundedLastFrame;
@@ -493,7 +506,7 @@ public class PlayerController : MonoBehaviour
         {
             airborneLateralSpeedLimit =
                 Mathf.Max(
-                    currentLateralVelocity.magnitude,
+                    _lateralVelocity.magnitude,
                     minimumAirSpeedLimit
                 );
         }
@@ -525,7 +538,7 @@ public class PlayerController : MonoBehaviour
             Time.deltaTime;
 
         Vector3 newLateralVelocity =
-            currentLateralVelocity +
+            _lateralVelocity +
             movementDelta;
 
         if (movementDirection.sqrMagnitude > 0.85f)
@@ -566,7 +579,7 @@ public class PlayerController : MonoBehaviour
             {
                 newLateralVelocity =
                     Vector3.MoveTowards(
-                        currentLateralVelocity,
+                        _lateralVelocity,
                         Vector3.zero,
                         airDeceleration * Time.deltaTime
                     );
@@ -585,17 +598,25 @@ public class PlayerController : MonoBehaviour
             }
         }
 
+        /*
+         * Wichtig: Die berechnete Sollgeschwindigkeit wird unabhängig von
+         * CharacterController.velocity gespeichert. Kollisionen dürfen daher
+         * nicht mehr im nächsten Frame unterschiedlich viel Momentum liefern,
+         * nur weil der Spieler frontal oder diagonal an die Stufe gelangt.
+         */
+        _lateralVelocity = newLateralVelocity;
+
         Vector3 finalVelocity =
-            newLateralVelocity +
+            _lateralVelocity +
             Vector3.up * _verticalVelocity;
 
-/*
- * Wallsliding erst anwenden, wenn der Spieler eindeutig
- * in der Luft ist.
- *
- * Dadurch wird die senkrechte Vorderseite einer normalen
- * Stufe nicht als Wallslide-Fläche behandelt.
- */
+        /*
+         * Wallsliding erst anwenden, wenn der Spieler eindeutig
+         * in der Luft ist.
+         *
+         * Dadurch wird die senkrechte Vorderseite einer normalen
+         * Stufe nicht als Wallslide-Fläche behandelt.
+         */
         bool canHandleSteepWall =
             !isGrounded &&
             !wasGroundedLastFrame &&
@@ -606,13 +627,18 @@ public class PlayerController : MonoBehaviour
         {
             finalVelocity =
                 HandleSteepWalls(finalVelocity);
+
+            // Falls HandleSteepWalls die horizontale Richtung projiziert,
+            // muss auch unsere eigene Sollgeschwindigkeit dazu passen.
+            _lateralVelocity = new Vector3(
+                finalVelocity.x,
+                0f,
+                finalVelocity.z
+            );
         }
 
-        CurrentSpeed = new Vector3(
-            finalVelocity.x,
-            0f,
-            finalVelocity.z
-        ).magnitude;
+        CurrentSpeed =
+            _lateralVelocity.magnitude;
 
         _characterController.Move(
             finalVelocity * Time.deltaTime
@@ -624,8 +650,6 @@ public class PlayerController : MonoBehaviour
         );
 
         HandleSprintStamina(isSprinting);
-
-        
     }
 
     private void HandleCharacterRotation(
@@ -768,10 +792,14 @@ public class PlayerController : MonoBehaviour
         return direction.normalized;
     }
 
-    private Vector2 TransformedInput(Vector2 movementInput)
+    private Vector2 TransformedInput(
+        Vector2 movementInput
+    )
     {
         float inputMagnitude =
-            Mathf.Clamp01(movementInput.magnitude);
+            Mathf.Clamp01(
+                movementInput.magnitude
+            );
 
         if (inputMagnitude <= 0.001f)
         {
@@ -781,21 +809,12 @@ public class PlayerController : MonoBehaviour
         return
             movementInput.normalized *
             Mathf.Pow(inputMagnitude, 0.25f);
-        
     }
-    
-    
 
     private bool IsMovingLaterally()
     {
-        Vector3 lateralVelocity = new Vector3(
-            _characterController.velocity.x,
-            0f,
-            _characterController.velocity.z
-        );
-
         return
-            lateralVelocity.magnitude >
+            _lateralVelocity.magnitude >
             movingThreshold;
     }
 
@@ -807,51 +826,91 @@ public class PlayerController : MonoBehaviour
     }
 
     /*
-     * Unverändert:
-     * Keine zusätzliche Winkelprüfung, damit Stufenkanten
-     * das bestehende Step-Offset-Verhalten nicht beeinflussen.
+     * Der Groundcheck akzeptiert nur Treffer, deren Normale innerhalb des
+     * Slope Limits liegt. Eine senkrechte Stufenvorderseite oder Wand kann
+     * dadurch nicht mehr als Boden gelten und den Step Offset aktiv halten.
      */
     private bool IsGroundedWhileGrounded()
     {
-        Vector3 spherePosition =
-            transform.position +
-            Vector3.up * groundCheckYOffset;
-
-        return Physics.CheckSphere(
-            spherePosition,
-            groundCheckRadius,
-            _groundLayers,
-            QueryTriggerInteraction.Ignore
-        );
+        return TryGetWalkableGround();
     }
 
     private bool IsGroundedWhileAirborne()
     {
-        Vector3 normal =
-            CharacterControllerUtils
-                .GetNormalWithSphereCast(
-                    _characterController,
-                    _groundLayers
-                );
-
-        if (normal.sqrMagnitude < 0.001f)
-        {
-            return false;
-        }
-
-        float angle =
-            Vector3.Angle(
-                normal,
-                Vector3.up
-            );
-
-        bool validAngle =
-            angle <
-            _characterController.slopeLimit;
-
         return
             _characterController.isGrounded &&
-            validAngle;
+            TryGetWalkableGround();
+    }
+
+    private bool TryGetWalkableGround()
+    {
+        float checkRadius = Mathf.Min(
+            groundCheckRadius,
+            _characterController.radius * 0.95f
+        );
+
+        Vector3 footPosition =
+            GetControllerFootPosition();
+
+        Vector3 castOrigin =
+            footPosition +
+            Vector3.up *
+            (checkRadius + groundCheckYOffset);
+
+        float castDistance =
+            groundCheckYOffset +
+            groundCheckDistance;
+
+        int hitCount = Physics.SphereCastNonAlloc(
+            castOrigin,
+            checkRadius,
+            Vector3.down,
+            _groundCheckHits,
+            castDistance,
+            _groundLayers,
+            QueryTriggerInteraction.Ignore
+        );
+
+        for (int i = 0; i < hitCount; i++)
+        {
+            RaycastHit hit =
+                _groundCheckHits[i];
+
+            if (hit.collider == null)
+            {
+                continue;
+            }
+
+            float groundAngle =
+                Vector3.Angle(
+                    hit.normal,
+                    Vector3.up
+                );
+
+            if (groundAngle <= _characterController.slopeLimit)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private Vector3 GetControllerFootPosition()
+    {
+        Vector3 worldCenter =
+            transform.TransformPoint(
+                _characterController.center
+            );
+
+        float halfHeight = Mathf.Max(
+            _characterController.height * 0.5f,
+            _characterController.radius
+        );
+
+        return
+            worldCenter -
+            Vector3.up * halfHeight;
     }
 
     private Vector3 HandleSteepWalls(Vector3 velocity)
@@ -943,15 +1002,64 @@ public class PlayerController : MonoBehaviour
 
     private void OnDrawGizmosSelected()
     {
-        Vector3 spherePosition =
-            transform.position +
-            Vector3.up * groundCheckYOffset;
+        CharacterController characterController =
+            _characterController != null
+                ? _characterController
+                : GetComponent<CharacterController>();
+
+        if (characterController == null)
+        {
+            return;
+        }
+
+        float checkRadius = Mathf.Min(
+            groundCheckRadius,
+            characterController.radius * 0.95f
+        );
+
+        Vector3 worldCenter =
+            transform.TransformPoint(
+                characterController.center
+            );
+
+        float halfHeight = Mathf.Max(
+            characterController.height * 0.5f,
+            characterController.radius
+        );
+
+        Vector3 footPosition =
+            worldCenter -
+            Vector3.up * halfHeight;
+
+        Vector3 castOrigin =
+            footPosition +
+            Vector3.up *
+            (checkRadius + groundCheckYOffset);
+
+        float castDistance =
+            groundCheckYOffset +
+            groundCheckDistance;
+
+        Vector3 castEnd =
+            castOrigin +
+            Vector3.down * castDistance;
 
         Gizmos.color = Color.yellow;
-
         Gizmos.DrawWireSphere(
-            spherePosition,
-            groundCheckRadius
+            castOrigin,
+            checkRadius
+        );
+
+        Gizmos.color = Color.green;
+        Gizmos.DrawWireSphere(
+            castEnd,
+            checkRadius
+        );
+
+        Gizmos.DrawLine(
+            castOrigin,
+            castEnd
         );
     }
+
 }
