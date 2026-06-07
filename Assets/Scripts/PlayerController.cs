@@ -3,11 +3,11 @@ using UnityEngine.Serialization;
 
 [DefaultExecutionOrder(-1)]
 public class PlayerController : MonoBehaviour
-{ 
+{
     [Header("Components")]
     private CharacterController _characterController;
     private Camera _playerCamera;
-    
+
     [Header("Base Movement")]
     public float walkSpeed;
     public float runSpeed;
@@ -19,31 +19,51 @@ public class PlayerController : MonoBehaviour
     [FormerlySerializedAs("turnSpeed")]
     public float runTurnSpeed;
 
-    [Tooltip("Free-Roam Drehgeschwindigkeit beim Sprinten. Niedriger als Run Turn Speed setzen, damit Sprint träger rotiert.")]
+    [Tooltip(
+        "Free-Roam Drehgeschwindigkeit beim Sprinten. " +
+        "Niedriger als Run Turn Speed setzen, damit Sprint träger rotiert."
+    )]
     public float sprintTurnSpeed;
 
     [Header("Jumping & Falling")]
     public float gravity;
-    [FormerlySerializedAs("jumpSpeed")] public float jumpHeight;
+
+    [FormerlySerializedAs("jumpSpeed")]
+    public float jumpHeight;
+
     [Tooltip("Wie stark man die Bewegungsrichtung in der Luft beeinflussen kann.")]
     [Range(0f, 1f)]
     [SerializeField] private float airControlMultiplier = 0.25f;
-    [Tooltip("Erlaubte Geschwindigkeit bei einem Sprung aus dem Stand. 0 bedeutet kein horizontales Air Movement aus dem Stand.")]
+
+    [Tooltip(
+        "Erlaubte Geschwindigkeit bei einem Sprung aus dem Stand. " +
+        "0 bedeutet kein horizontales Air Movement aus dem Stand."
+    )]
     [SerializeField] private float minimumAirSpeedLimit = 0f;
-    [Tooltip("Wie schnell horizontales Momentum ohne Movement-Input in der Luft abgebaut wird.")]
+
+    [Tooltip(
+        "Wie schnell horizontales Momentum ohne Movement-Input " +
+        "in der Luft abgebaut wird."
+    )]
     [SerializeField] private float airDeceleration = 15f;
-    
+
     [Header("Lock On Movement")]
-    [Tooltip("Wie schnell sich der Player im Lock-on zum Target dreht. Wert ist Grad pro Sekunde.")]
+    [Tooltip(
+        "Wie schnell sich der Player im Lock-on zum Target dreht. " +
+        "Wert ist Grad pro Sekunde."
+    )]
     public float lockOnTurnSpeed = 720f;
 
-    [Tooltip("Wie schnell sich der Player beim Sprinten im Lock-on wieder in Laufrichtung dreht.")]
+    [Tooltip(
+        "Wie schnell sich der Player beim Sprinten im Lock-on " +
+        "wieder in Laufrichtung dreht."
+    )]
     public float lockOnSprintTurnSpeed = 720f;
 
     [Header("Attack Rotation")]
     public float attackTurnSpeed = 360f;
     public float maxAttackRotationBudget = 180f;
-    
+
     [Header("Environment Details")]
     [SerializeField] private LayerMask _groundLayers;
 
@@ -53,9 +73,10 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float groundCheckYOffset = 0.05f;
 
     private int lastSeenAttackInstanceId;
-    
+
     private float movingThreshold = 0.01f;
     private float targetSpeed;
+    private float _stepOffset;
 
     public float CurrentSpeed { get; private set; }
     public Vector3 CurrentMovementDirection { get; private set; }
@@ -63,47 +84,58 @@ public class PlayerController : MonoBehaviour
     private float _verticalVelocity;
     private float remainingAttackRotation;
     private float airborneLateralSpeedLimit;
+
     private bool wasGroundedLastFrame;
+    private bool sprintStaminaActionActive;
+    private bool _isGrounded;
+
+    private float _antiBump;
+
     private PlayerInputReader _playerInputReader;
     private PlayerState _playerState;
     private PlayerCombatController _playerCombatController;
     private PlayerLockOnController _playerLockOnController;
     private PlayerStamina _playerStamina;
-    private bool sprintStaminaActionActive;
-    private float _antiBump;
-    private bool _isGrounded;
-    
-    
+
     private void Awake()
     {
         _playerInputReader = GetComponent<PlayerInputReader>();
 
         if (_characterController == null)
+        {
             _characterController = GetComponent<CharacterController>();
+        }
 
         if (_playerCamera == null)
+        {
             _playerCamera = GetComponentInChildren<Camera>();
+        }
 
         _playerState = GetComponent<PlayerState>();
         _playerCombatController = GetComponent<PlayerCombatController>();
         _playerLockOnController = GetComponent<PlayerLockOnController>();
         _playerStamina = GetComponent<PlayerStamina>();
-        
-        
+
         _antiBump = sprintSpeed;
+        _stepOffset = _characterController.stepOffset;
     }
 
     private void Update()
     {
         _isGrounded = IsGrounded();
-        
+
         bool isAttacking =
             _playerCombatController != null &&
             _playerCombatController.IsAttackInProgress();
 
-        if (isAttacking && _playerCombatController.AttackInstanceId != lastSeenAttackInstanceId)
+        if (
+            isAttacking &&
+            _playerCombatController.AttackInstanceId != lastSeenAttackInstanceId
+        )
         {
-            lastSeenAttackInstanceId = _playerCombatController.AttackInstanceId;
+            lastSeenAttackInstanceId =
+                _playerCombatController.AttackInstanceId;
+
             BeginAttackRotation();
         }
 
@@ -131,6 +163,9 @@ public class PlayerController : MonoBehaviour
     {
         bool isGrounded = _isGrounded;
 
+        /*
+         * Step-Offset-Logik unverändert aus deiner Version.
+         */
         if (!isGrounded)
         {
             if (_verticalVelocity > 0f)
@@ -138,12 +173,20 @@ public class PlayerController : MonoBehaviour
                 _playerState.SetPlayerMovementState(
                     PlayerMovementState.Jumping
                 );
+
+                _characterController.stepOffset = 0f;
             }
-            else
+            else if (_verticalVelocity < 0f)
             {
                 _playerState.SetPlayerMovementState(
                     PlayerMovementState.Falling
                 );
+
+                _characterController.stepOffset = 0f;
+            }
+            else
+            {
+                _characterController.stepOffset = _stepOffset;
             }
 
             return;
@@ -167,10 +210,13 @@ public class PlayerController : MonoBehaviour
             targetSpeed <= runSpeed;
 
         PlayerMovementState lateralState =
-            isSprinting ? PlayerMovementState.Sprinting :
-            isRunning   ? PlayerMovementState.Running :
-            isWalking   ? PlayerMovementState.Walking :
-            PlayerMovementState.Idling;
+            isSprinting
+                ? PlayerMovementState.Sprinting
+                : isRunning
+                    ? PlayerMovementState.Running
+                    : isWalking
+                        ? PlayerMovementState.Walking
+                        : PlayerMovementState.Idling;
 
         _playerState.SetPlayerMovementState(lateralState);
     }
@@ -178,9 +224,9 @@ public class PlayerController : MonoBehaviour
     private void HandleVerticalMovement()
     {
         bool isGrounded = _isGrounded;
-        
+
         _verticalVelocity -= gravity * Time.deltaTime;
-        
+
         if (isGrounded && _verticalVelocity < 0f)
         {
             _verticalVelocity = -_antiBump;
@@ -188,14 +234,23 @@ public class PlayerController : MonoBehaviour
 
         if (_playerInputReader.JumpPressed && isGrounded)
         {
-            _verticalVelocity += _antiBump + Mathf.Sqrt(jumpHeight * 3 * gravity);
+            _verticalVelocity +=
+                _antiBump +
+                Mathf.Sqrt(jumpHeight * 3f * gravity);
         }
     }
 
     private void HandleAttackVerticalMovementOnly()
     {
-        Vector3 verticalMove = new Vector3(0f, _verticalVelocity, 0f);
-        _characterController.Move(verticalMove * Time.deltaTime);
+        Vector3 verticalMove = new Vector3(
+            0f,
+            _verticalVelocity,
+            0f
+        );
+
+        _characterController.Move(
+            verticalMove * Time.deltaTime
+        );
 
         CurrentSpeed = 0f;
         CurrentMovementDirection = Vector3.zero;
@@ -203,22 +258,31 @@ public class PlayerController : MonoBehaviour
 
     private void BeginAttackRotation()
     {
-        remainingAttackRotation = maxAttackRotationBudget;
+        remainingAttackRotation =
+            maxAttackRotationBudget;
     }
 
     private void HandleAttackRotation()
     {
         if (remainingAttackRotation <= 0f)
+        {
             return;
+        }
 
         if (HasValidLockOnTarget())
         {
-            Vector3 directionToTarget = GetDirectionToLockOnTarget();
+            Vector3 directionToTarget =
+                GetDirectionToLockOnTarget();
 
             if (directionToTarget.sqrMagnitude < 0.001f)
+            {
                 return;
+            }
 
-            RotateTowardsDirectionWithAttackBudget(directionToTarget);
+            RotateTowardsDirectionWithAttackBudget(
+                directionToTarget
+            );
+
             return;
         }
 
@@ -227,10 +291,15 @@ public class PlayerController : MonoBehaviour
 
     private void HandleFreeAttackRotation()
     {
-        Vector2 transformedInput = TransformedInput(_playerInputReader.MovementInput);
+        Vector2 transformedInput =
+            TransformedInput(
+                _playerInputReader.MovementInput
+            );
 
         if (transformedInput.sqrMagnitude < 0.001f)
+        {
             return;
+        }
 
         Vector3 cameraForwardXZ = new Vector3(
             _playerCamera.transform.forward.x,
@@ -249,28 +318,47 @@ public class PlayerController : MonoBehaviour
             cameraForwardXZ * transformedInput.y;
 
         if (desiredDirection.sqrMagnitude < 0.001f)
+        {
             return;
+        }
 
-        RotateTowardsDirectionWithAttackBudget(desiredDirection.normalized);
+        RotateTowardsDirectionWithAttackBudget(
+            desiredDirection.normalized
+        );
     }
 
-    private void RotateTowardsDirectionWithAttackBudget(Vector3 desiredDirection)
+    private void RotateTowardsDirectionWithAttackBudget(
+        Vector3 desiredDirection
+    )
     {
         desiredDirection.y = 0f;
 
         if (desiredDirection.sqrMagnitude < 0.001f)
+        {
             return;
+        }
 
         desiredDirection.Normalize();
 
-        Quaternion desiredRotation = Quaternion.LookRotation(desiredDirection, Vector3.up);
+        Quaternion desiredRotation =
+            Quaternion.LookRotation(
+                desiredDirection,
+                Vector3.up
+            );
 
-        float angleToTarget = Quaternion.Angle(transform.rotation, desiredRotation);
+        float angleToTarget =
+            Quaternion.Angle(
+                transform.rotation,
+                desiredRotation
+            );
 
         if (angleToTarget <= 0.01f)
+        {
             return;
+        }
 
-        float rotationThisFrame = attackTurnSpeed * Time.deltaTime;
+        float rotationThisFrame =
+            attackTurnSpeed * Time.deltaTime;
 
         float allowedRotation = Mathf.Min(
             rotationThisFrame,
@@ -278,178 +366,209 @@ public class PlayerController : MonoBehaviour
             remainingAttackRotation
         );
 
-        transform.rotation = Quaternion.RotateTowards(
-            transform.rotation,
-            desiredRotation,
-            allowedRotation
-        );
+        transform.rotation =
+            Quaternion.RotateTowards(
+                transform.rotation,
+                desiredRotation,
+                allowedRotation
+            );
 
         remainingAttackRotation -= allowedRotation;
     }
-    
+
     private void HandleLateralMovement()
-{
-    bool isGrounded = _isGrounded;
-
-    bool isSprinting =
-        isGrounded &&
-        _playerInputReader.SprintToggledOn &&
-        CanSprintWithStamina();
-
-    Vector3 cameraForwardXZ = new Vector3(
-        _playerCamera.transform.forward.x,
-        0f,
-        _playerCamera.transform.forward.z
-    ).normalized;
-
-    Vector3 cameraRightXZ = new Vector3(
-        _playerCamera.transform.right.x,
-        0f,
-        _playerCamera.transform.right.z
-    ).normalized;
-
-    Vector2 transformedInput =
-        TransformedInput(_playerInputReader.MovementInput);
-
-    Vector3 movementDirection =
-        cameraRightXZ * transformedInput.x +
-        cameraForwardXZ * transformedInput.y;
-
-    CurrentMovementDirection =
-        movementDirection.sqrMagnitude > 0.001f
-            ? movementDirection.normalized
-            : Vector3.zero;
-
-    Vector3 currentLateralVelocity = new Vector3(
-        _characterController.velocity.x,
-        0f,
-        _characterController.velocity.z
-    );
-
-    bool justLeftGround =
-        !isGrounded &&
-        wasGroundedLastFrame;
-
-    if (justLeftGround)
     {
-        // Beim Absprung vorhandenes Momentum als Air-Speed-Limit speichern.
-        airborneLateralSpeedLimit = Mathf.Max(
-            currentLateralVelocity.magnitude,
-            minimumAirSpeedLimit
-        );
-    }
+        bool isGrounded = _isGrounded;
 
-    if (isGrounded)
-    {
-        airborneLateralSpeedLimit = 0f;
-    }
+        bool isSprinting =
+            isGrounded &&
+            _playerInputReader.SprintToggledOn &&
+            CanSprintWithStamina();
 
-    float lateralAcceleration;
+        Vector3 cameraForwardXZ = new Vector3(
+            _playerCamera.transform.forward.x,
+            0f,
+            _playerCamera.transform.forward.z
+        ).normalized;
 
-    if (isGrounded)
-    {
-        lateralAcceleration =
-            isSprinting
-                ? sprintAcceleration
-                : runAcceleration;
-    }
-    else
-    {
-        lateralAcceleration =
-            runAcceleration *
-            airControlMultiplier;
-    }
+        Vector3 cameraRightXZ = new Vector3(
+            _playerCamera.transform.right.x,
+            0f,
+            _playerCamera.transform.right.z
+        ).normalized;
 
-    Vector3 movementDelta =
-        movementDirection *
-        lateralAcceleration *
-        Time.deltaTime;
-
-    Vector3 newLateralVelocity =
-        currentLateralVelocity +
-        movementDelta;
-
-    if (movementDirection.sqrMagnitude > 0.85f)
-    {
-        targetSpeed = runSpeed;
-    }
-    else
-    {
-        targetSpeed = walkSpeed;
-    }
-
-    if (isGrounded)
-    {
-        newLateralVelocity = Vector3.MoveTowards(
-            newLateralVelocity,
-            Vector3.zero,
-            drag * Time.deltaTime
-        );
-
-        float groundedSpeedLimit =
-            isSprinting
-                ? sprintSpeed
-                : targetSpeed;
-
-        newLateralVelocity = Vector3.ClampMagnitude(
-            newLateralVelocity,
-            groundedSpeedLimit
-        );
-    }
-    else
-    {
-        bool hasMovementInput =
-            movementDirection.sqrMagnitude > 0.001f;
-
-        if (!hasMovementInput)
-        {
-            // Ohne Input horizontale Geschwindigkeit abbauen.
-            newLateralVelocity = Vector3.MoveTowards(
-                currentLateralVelocity,
-                Vector3.zero,
-                airDeceleration * Time.deltaTime
+        Vector2 transformedInput =
+            TransformedInput(
+                _playerInputReader.MovementInput
             );
-        }
-        else if (airborneLateralSpeedLimit <= 0.001f)
+
+        Vector3 movementDirection =
+            cameraRightXZ * transformedInput.x +
+            cameraForwardXZ * transformedInput.y;
+
+        CurrentMovementDirection =
+            movementDirection.sqrMagnitude > 0.001f
+                ? movementDirection.normalized
+                : Vector3.zero;
+
+        Vector3 currentLateralVelocity = new Vector3(
+            _characterController.velocity.x,
+            0f,
+            _characterController.velocity.z
+        );
+
+        bool justLeftGround =
+            !isGrounded &&
+            wasGroundedLastFrame;
+
+        if (justLeftGround)
         {
-            newLateralVelocity = Vector3.zero;
+            airborneLateralSpeedLimit =
+                Mathf.Max(
+                    currentLateralVelocity.magnitude,
+                    minimumAirSpeedLimit
+                );
+        }
+
+        if (isGrounded)
+        {
+            airborneLateralSpeedLimit = 0f;
+        }
+
+        float lateralAcceleration;
+
+        if (isGrounded)
+        {
+            lateralAcceleration =
+                isSprinting
+                    ? sprintAcceleration
+                    : runAcceleration;
         }
         else
         {
-            // Air Control erlauben, aber keinen Speed über das
-            // beim Absprung gespeicherte Momentum hinaus.
-            newLateralVelocity = Vector3.ClampMagnitude(
-                newLateralVelocity,
-                airborneLateralSpeedLimit
-            );
+            lateralAcceleration =
+                runAcceleration *
+                airControlMultiplier;
         }
+
+        Vector3 movementDelta =
+            movementDirection *
+            lateralAcceleration *
+            Time.deltaTime;
+
+        Vector3 newLateralVelocity =
+            currentLateralVelocity +
+            movementDelta;
+
+        if (movementDirection.sqrMagnitude > 0.85f)
+        {
+            targetSpeed = runSpeed;
+        }
+        else
+        {
+            targetSpeed = walkSpeed;
+        }
+
+        if (isGrounded)
+        {
+            newLateralVelocity =
+                Vector3.MoveTowards(
+                    newLateralVelocity,
+                    Vector3.zero,
+                    drag * Time.deltaTime
+                );
+
+            float groundedSpeedLimit =
+                isSprinting
+                    ? sprintSpeed
+                    : targetSpeed;
+
+            newLateralVelocity =
+                Vector3.ClampMagnitude(
+                    newLateralVelocity,
+                    groundedSpeedLimit
+                );
+        }
+        else
+        {
+            bool hasMovementInput =
+                movementDirection.sqrMagnitude > 0.001f;
+
+            if (!hasMovementInput)
+            {
+                newLateralVelocity =
+                    Vector3.MoveTowards(
+                        currentLateralVelocity,
+                        Vector3.zero,
+                        airDeceleration * Time.deltaTime
+                    );
+            }
+            else if (airborneLateralSpeedLimit <= 0.001f)
+            {
+                newLateralVelocity = Vector3.zero;
+            }
+            else
+            {
+                newLateralVelocity =
+                    Vector3.ClampMagnitude(
+                        newLateralVelocity,
+                        airborneLateralSpeedLimit
+                    );
+            }
+        }
+
+        /*
+         * Zuerst die horizontale und vertikale Geschwindigkeit
+         * zur vollständigen Bewegung zusammensetzen.
+         */
+        Vector3 finalVelocity =
+            newLateralVelocity +
+            Vector3.up * _verticalVelocity;
+
+        /*
+         * Die Methode wird immer geprüft.
+         *
+         * Auf normalem Boden und erlaubten Slopes verändert sie
+         * nichts. Dadurch muss IsGroundedWhileGrounded nicht
+         * verändert werden und das Step-Offset-System bleibt
+         * davon unberührt.
+         */
+        finalVelocity =
+            HandleSteepWalls(finalVelocity);
+
+        CurrentSpeed = new Vector3(
+            finalVelocity.x,
+            0f,
+            finalVelocity.z
+        ).magnitude;
+
+        _characterController.Move(
+            finalVelocity * Time.deltaTime
+        );
+
+        HandleCharacterRotation(
+            movementDirection,
+            isSprinting
+        );
+
+        HandleSprintStamina(isSprinting);
+
+        wasGroundedLastFrame = isGrounded;
     }
 
-    CurrentSpeed = newLateralVelocity.magnitude;
-
-    Vector3 finalVelocity =
-        newLateralVelocity +
-        Vector3.up * _verticalVelocity;
-
-    _characterController.Move(
-        finalVelocity * Time.deltaTime
-    );
-
-    HandleCharacterRotation(
-        movementDirection,
-        isSprinting
-    );
-
-    HandleSprintStamina(isSprinting);
-
-    wasGroundedLastFrame = isGrounded;
-}
-
-    private void HandleCharacterRotation(Vector3 movementDirection, bool isSprinting)
+    private void HandleCharacterRotation(
+        Vector3 movementDirection,
+        bool isSprinting
+    )
     {
-        bool hasMovementDirection = movementDirection.sqrMagnitude > 0.001f;
+        bool hasMovementDirection =
+            movementDirection.sqrMagnitude > 0.001f;
 
-        if (HasValidLockOnTarget() && isSprinting && hasMovementDirection)
+        if (
+            HasValidLockOnTarget() &&
+            isSprinting &&
+            hasMovementDirection
+        )
         {
             RotateTowardsMovementDirection(
                 movementDirection,
@@ -461,98 +580,135 @@ public class PlayerController : MonoBehaviour
 
         if (HasValidLockOnTarget())
         {
-            RotateTowardsLockOnTarget(lockOnTurnSpeed);
+            RotateTowardsLockOnTarget(
+                lockOnTurnSpeed
+            );
+
             return;
         }
 
         if (hasMovementDirection)
         {
             float currentFreeRoamTurnSpeed =
-                isSprinting ? sprintTurnSpeed : runTurnSpeed;
+                isSprinting
+                    ? sprintTurnSpeed
+                    : runTurnSpeed;
 
-            Quaternion targetRotation = Quaternion.LookRotation(
-                movementDirection,
-                Vector3.up
-            );
+            Quaternion targetRotation =
+                Quaternion.LookRotation(
+                    movementDirection,
+                    Vector3.up
+                );
 
-            transform.rotation = Quaternion.Slerp(
-                transform.rotation,
-                targetRotation,
-                currentFreeRoamTurnSpeed * Time.deltaTime
-            );
+            transform.rotation =
+                Quaternion.Slerp(
+                    transform.rotation,
+                    targetRotation,
+                    currentFreeRoamTurnSpeed *
+                    Time.deltaTime
+                );
         }
     }
-    
-    private void RotateTowardsMovementDirection(Vector3 movementDirection, float rotationSpeed)
+
+    private void RotateTowardsMovementDirection(
+        Vector3 movementDirection,
+        float rotationSpeed
+    )
     {
         movementDirection.y = 0f;
 
         if (movementDirection.sqrMagnitude < 0.001f)
+        {
             return;
+        }
 
-        Quaternion targetRotation = Quaternion.LookRotation(
-            movementDirection.normalized,
-            Vector3.up
-        );
+        Quaternion targetRotation =
+            Quaternion.LookRotation(
+                movementDirection.normalized,
+                Vector3.up
+            );
 
-        transform.rotation = Quaternion.RotateTowards(
-            transform.rotation,
-            targetRotation,
-            rotationSpeed * Time.deltaTime
-        );
+        transform.rotation =
+            Quaternion.RotateTowards(
+                transform.rotation,
+                targetRotation,
+                rotationSpeed * Time.deltaTime
+            );
     }
 
-    private void RotateTowardsLockOnTarget(float rotationSpeed)
+    private void RotateTowardsLockOnTarget(
+        float rotationSpeed
+    )
     {
-        Vector3 directionToTarget = GetDirectionToLockOnTarget();
+        Vector3 directionToTarget =
+            GetDirectionToLockOnTarget();
 
         if (directionToTarget.sqrMagnitude < 0.001f)
+        {
             return;
+        }
 
-        Quaternion targetRotation = Quaternion.LookRotation(
-            directionToTarget,
-            Vector3.up
-        );
+        Quaternion targetRotation =
+            Quaternion.LookRotation(
+                directionToTarget,
+                Vector3.up
+            );
 
-        transform.rotation = Quaternion.RotateTowards(
-            transform.rotation,
-            targetRotation,
-            rotationSpeed * Time.deltaTime
-        );
+        transform.rotation =
+            Quaternion.RotateTowards(
+                transform.rotation,
+                targetRotation,
+                rotationSpeed * Time.deltaTime
+            );
     }
 
     private bool HasValidLockOnTarget()
     {
-        return _playerLockOnController != null &&
-               _playerLockOnController.IsLockedOn &&
-               _playerLockOnController.CurrentTarget != null;
+        return
+            _playerLockOnController != null &&
+            _playerLockOnController.IsLockedOn &&
+            _playerLockOnController.CurrentTarget != null;
     }
 
     private Vector3 GetDirectionToLockOnTarget()
     {
         if (!HasValidLockOnTarget())
+        {
             return Vector3.zero;
+        }
 
         Vector3 targetPosition =
-            _playerLockOnController.CurrentTarget.AimPosition;
+            _playerLockOnController
+                .CurrentTarget
+                .AimPosition;
 
         Vector3 direction =
-            targetPosition - transform.position;
+            targetPosition -
+            transform.position;
 
         direction.y = 0f;
 
         if (direction.sqrMagnitude < 0.001f)
+        {
             return Vector3.zero;
+        }
 
         return direction.normalized;
     }
-    
-    private Vector2 TransformedInput(Vector2 movementInput)
-    {
-        Vector2 normalizedInput = movementInput.normalized;
-        float inputMagnitude = movementInput.magnitude;
 
-        return normalizedInput * Mathf.Pow(inputMagnitude, 0.25f);
+    private Vector2 TransformedInput(
+        Vector2 movementInput
+    )
+    {
+        Vector2 normalizedInput =
+            movementInput.normalized;
+
+        float inputMagnitude =
+            movementInput.magnitude;
+
+        return
+            normalizedInput *
+            Mathf.Pow(inputMagnitude, 0.25f);
     }
 
     private bool IsMovingLaterally()
@@ -563,16 +719,23 @@ public class PlayerController : MonoBehaviour
             _characterController.velocity.z
         );
 
-        return lateralVelocity.magnitude > movingThreshold;
+        return
+            lateralVelocity.magnitude >
+            movingThreshold;
     }
 
     private bool IsGrounded()
     {
-        bool grounded = _playerState.InGroundedState() ? IsGroundedWhileGrounded() : IsGroundedWhileAirborne();
-        
-        return grounded;
+        return _playerState.InGroundedState()
+            ? IsGroundedWhileGrounded()
+            : IsGroundedWhileAirborne();
     }
 
+    /*
+     * Unverändert:
+     * Keine zusätzliche Winkelprüfung, damit Stufenkanten
+     * das bestehende Step-Offset-Verhalten nicht beeinflussen.
+     */
     private bool IsGroundedWhileGrounded()
     {
         Vector3 spherePosition =
@@ -586,37 +749,104 @@ public class PlayerController : MonoBehaviour
             QueryTriggerInteraction.Ignore
         );
     }
-    
-    private void OnDrawGizmosSelected()
-    {
-        Vector3 spherePosition =
-            transform.position +
-            Vector3.up * groundCheckYOffset;
-
-        Gizmos.color = Color.yellow;
-        Gizmos.DrawWireSphere(
-            spherePosition,
-            groundCheckRadius
-        );
-    }
 
     private bool IsGroundedWhileAirborne()
     {
-        return _characterController.isGrounded;
+        Vector3 normal =
+            CharacterControllerUtils
+                .GetNormalWithSphereCast(
+                    _characterController,
+                    _groundLayers
+                );
+
+        if (normal.sqrMagnitude < 0.001f)
+        {
+            return false;
+        }
+
+        float angle =
+            Vector3.Angle(
+                normal,
+                Vector3.up
+            );
+
+        bool validAngle =
+            angle <
+            _characterController.slopeLimit;
+
+        return
+            _characterController.isGrounded &&
+            validAngle;
     }
-    
+
+    private Vector3 HandleSteepWalls(
+        Vector3 velocity
+    )
+    {
+        Vector3 normal =
+            CharacterControllerUtils
+                .GetNormalWithSphereCast(
+                    _characterController,
+                    _groundLayers
+                );
+
+        /*
+         * Kein gültiger Treffer:
+         * Geschwindigkeit unverändert zurückgeben.
+         */
+        if (normal.sqrMagnitude < 0.001f)
+        {
+            return velocity;
+        }
+
+        float angle =
+            Vector3.Angle(
+                normal,
+                Vector3.up
+            );
+
+        bool isTooSteep =
+            angle >
+            _characterController.slopeLimit;
+
+        /*
+         * Nur beim Fallen und nur auf einer zu steilen Fläche
+         * die gesamte Velocity auf die Wand-/Slope-Ebene
+         * projizieren.
+         */
+        if (
+            isTooSteep &&
+            velocity.y < 0f
+        )
+        {
+            velocity =
+                Vector3.ProjectOnPlane(
+                    velocity,
+                    normal
+                );
+        }
+
+        return velocity;
+    }
+
     private bool CanSprintWithStamina()
     {
         if (_playerStamina == null)
+        {
             return true;
+        }
 
         return _playerStamina.CanSprint;
     }
 
-    private void HandleSprintStamina(bool isSprinting)
+    private void HandleSprintStamina(
+        bool isSprinting
+    )
     {
         if (_playerStamina == null)
+        {
             return;
+        }
 
         if (isSprinting)
         {
@@ -626,7 +856,10 @@ public class PlayerController : MonoBehaviour
                 sprintStaminaActionActive = true;
             }
 
-            _playerStamina.SpendSprintStamina(Time.deltaTime);
+            _playerStamina.SpendSprintStamina(
+                Time.deltaTime
+            );
+
             return;
         }
 
@@ -636,12 +869,30 @@ public class PlayerController : MonoBehaviour
     private void StopSprintStaminaActionIfActive()
     {
         if (_playerStamina == null)
+        {
             return;
+        }
 
         if (!sprintStaminaActionActive)
+        {
             return;
+        }
 
         _playerStamina.EndStaminaAction();
         sprintStaminaActionActive = false;
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        Vector3 spherePosition =
+            transform.position +
+            Vector3.up * groundCheckYOffset;
+
+        Gizmos.color = Color.yellow;
+
+        Gizmos.DrawWireSphere(
+            spherePosition,
+            groundCheckRadius
+        );
     }
 }
