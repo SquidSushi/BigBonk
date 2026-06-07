@@ -88,7 +88,7 @@ public class PlayerController : MonoBehaviour
     private bool wasGroundedLastFrame;
     private bool sprintStaminaActionActive;
     private bool _isGrounded;
-
+    private bool antiBumpActive;
     private float _antiBump;
 
     private PlayerInputReader _playerInputReader;
@@ -96,6 +96,7 @@ public class PlayerController : MonoBehaviour
     private PlayerCombatController _playerCombatController;
     private PlayerLockOnController _playerLockOnController;
     private PlayerStamina _playerStamina;
+    
 
     private void Awake()
     {
@@ -122,6 +123,7 @@ public class PlayerController : MonoBehaviour
 
     private void Update()
     {
+        
         _isGrounded = IsGrounded();
 
         bool isAttacking =
@@ -157,11 +159,14 @@ public class PlayerController : MonoBehaviour
             HandleAttackVerticalMovementOnly();
             HandleAttackRotation();
         }
+        
+        wasGroundedLastFrame = _isGrounded;
     }
 
     private void UpdateMovementState()
     {
         bool isGrounded = _isGrounded;
+        
 
         /*
          * Step Offset auf dem Boden immer wiederherstellen.
@@ -232,21 +237,62 @@ public class PlayerController : MonoBehaviour
 
     private void HandleVerticalMovement()
     {
-        bool isGrounded = _isGrounded;
+        /*
+         * Springen:
+         * Anti-Bump vollständig deaktivieren und direkt
+         * die positive Sprunggeschwindigkeit setzen.
+         */
+        if (_playerInputReader.JumpPressed && _isGrounded)
+        {
+            antiBumpActive = false;
 
-        _verticalVelocity -= gravity * Time.deltaTime;
+            _verticalVelocity =
+                Mathf.Sqrt(
+                    jumpHeight * 3f * gravity
+                );
 
-        if (isGrounded && _verticalVelocity < 0f)
+            return;
+        }
+
+        /*
+         * Anti-Bump darf ausschließlich wirken,
+         * solange der Spieler tatsächlich grounded ist.
+         */
+        if (_isGrounded && _verticalVelocity <= 0f)
         {
             _verticalVelocity = -_antiBump;
+            antiBumpActive = true;
+
+            return;
         }
 
-        if (_playerInputReader.JumpPressed && isGrounded)
+        /*
+         * Sobald der Spieler den Boden verlässt, wird eine zuvor
+         * gesetzte Anti-Bump-Geschwindigkeit vollständig entfernt.
+         *
+         * Dadurch beginnt ein Fall von einer Ledge bei 0 und wird
+         * anschließend ausschließlich durch normale Gravity beschleunigt.
+         */
+        if (!_isGrounded && antiBumpActive)
         {
-            _verticalVelocity +=
-                _antiBump +
-                Mathf.Sqrt(jumpHeight * 3f * gravity);
+            _verticalVelocity = 0f;
+            antiBumpActive = false;
         }
+
+        /*
+         * Falls der Spieler trotz positivem Vertical Speed noch kurz
+         * als grounded erkannt wird, darf Anti-Bump ebenfalls nicht
+         * mehr als aktiv gelten.
+         */
+        if (_verticalVelocity > 0f)
+        {
+            antiBumpActive = false;
+        }
+
+        /*
+         * Ab hier wirkt ausschließlich normale Gravity.
+         */
+        _verticalVelocity -= gravity * Time.deltaTime;
     }
 
     private void HandleAttackVerticalMovementOnly()
@@ -566,7 +612,7 @@ public class PlayerController : MonoBehaviour
 
         HandleSprintStamina(isSprinting);
 
-        wasGroundedLastFrame = isGrounded;
+        
     }
 
     private void HandleCharacterRotation(

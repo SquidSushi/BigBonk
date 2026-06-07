@@ -60,9 +60,9 @@ CapsuleCollider:
   m_Enabled: 1
   serializedVersion: 2
   m_Radius: 1.0644581
-  m_Height: 2.379105
+  m_Height: 2.271658
   m_Direction: 1
-  m_Center: {x: -0.008627176, y: 0.07333112, z: -0.10846424}
+  m_Center: {x: -0.008627179, y: 0.1479356, z: -0.10846425}
 --- !u!54 &1353671390685126147
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -121,7 +121,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 537c572526947ef42a81801311cdb1eb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Health
-  maxHealth: 500
+  maxHealth: 20
   startWithFullHealth: 1
   currentHealth: 0
   logDamage: 1
