@@ -22,8 +22,17 @@ public class PlayerController : MonoBehaviour
     [Tooltip("Free-Roam Drehgeschwindigkeit beim Sprinten. Niedriger als Run Turn Speed setzen, damit Sprint träger rotiert.")]
     public float sprintTurnSpeed;
 
+    [Header("Jumping & Falling")]
     public float gravity;
-
+    [FormerlySerializedAs("jumpSpeed")] public float jumpHeight;
+    [Tooltip("Wie stark man die Bewegungsrichtung in der Luft beeinflussen kann.")]
+    [Range(0f, 1f)]
+    [SerializeField] private float airControlMultiplier = 0.25f;
+    [Tooltip("Erlaubte Geschwindigkeit bei einem Sprung aus dem Stand. 0 bedeutet kein horizontales Air Movement aus dem Stand.")]
+    [SerializeField] private float minimumAirSpeedLimit = 0f;
+    [Tooltip("Wie schnell horizontales Momentum ohne Movement-Input in der Luft abgebaut wird.")]
+    [SerializeField] private float airDeceleration = 15f;
+    
     [Header("Lock On Movement")]
     [Tooltip("Wie schnell sich der Player im Lock-on zum Target dreht. Wert ist Grad pro Sekunde.")]
     public float lockOnTurnSpeed = 720f;
@@ -45,7 +54,8 @@ public class PlayerController : MonoBehaviour
 
     private float _verticalVelocity;
     private float remainingAttackRotation;
-    
+    private float airborneLateralSpeedLimit;
+    private bool wasGroundedLastFrame;
     private PlayerInputReader _playerInputReader;
     private PlayerState _playerState;
     private PlayerCombatController _playerCombatController;
@@ -67,6 +77,8 @@ public class PlayerController : MonoBehaviour
         _playerCombatController = GetComponent<PlayerCombatController>();
         _playerLockOnController = GetComponent<PlayerLockOnController>();
         _playerStamina = GetComponent<PlayerStamina>();
+        
+        wasGroundedLastFrame = _characterController.isGrounded;
     }
 
     private void Update()
@@ -120,11 +132,11 @@ public class PlayerController : MonoBehaviour
 
         _playerState.SetPlayerMovementState(lateralState);
         
-        if (!isGrounded && _characterController.velocity.y > 0f)
+        if (!isGrounded && _verticalVelocity > 0f)
         {
             _playerState.SetPlayerMovementState(PlayerMovementState.Jumping);
         }
-        else if (!isGrounded && _characterController.velocity.y < 0f)
+        else if (!isGrounded && _verticalVelocity < 0f)
         {
             _playerState.SetPlayerMovementState(PlayerMovementState.Falling);
         }
@@ -140,6 +152,11 @@ public class PlayerController : MonoBehaviour
         }
 
         _verticalVelocity -= gravity * Time.deltaTime;
+
+        if (_playerInputReader.JumpPressed && isGrounded)
+        {
+            _verticalVelocity += Mathf.Sqrt(jumpHeight * 3 * gravity);
+        }
     }
 
     private void HandleAttackVerticalMovementOnly()
@@ -238,86 +255,162 @@ public class PlayerController : MonoBehaviour
     }
     
     private void HandleLateralMovement()
+{
+    bool isGrounded = IsGrounded();
+
+    bool isSprinting =
+        isGrounded &&
+        _playerInputReader.SprintToggledOn &&
+        CanSprintWithStamina();
+
+    Vector3 cameraForwardXZ = new Vector3(
+        _playerCamera.transform.forward.x,
+        0f,
+        _playerCamera.transform.forward.z
+    ).normalized;
+
+    Vector3 cameraRightXZ = new Vector3(
+        _playerCamera.transform.right.x,
+        0f,
+        _playerCamera.transform.right.z
+    ).normalized;
+
+    Vector2 transformedInput =
+        TransformedInput(_playerInputReader.MovementInput);
+
+    Vector3 movementDirection =
+        cameraRightXZ * transformedInput.x +
+        cameraForwardXZ * transformedInput.y;
+
+    CurrentMovementDirection =
+        movementDirection.sqrMagnitude > 0.001f
+            ? movementDirection.normalized
+            : Vector3.zero;
+
+    Vector3 currentLateralVelocity = new Vector3(
+        _characterController.velocity.x,
+        0f,
+        _characterController.velocity.z
+    );
+
+    bool justLeftGround =
+        !isGrounded &&
+        wasGroundedLastFrame;
+
+    if (justLeftGround)
     {
-        bool isSprinting =
-            _playerState.CurrentPlayerMovementState == PlayerMovementState.Sprinting;
+        // Beim Absprung vorhandenes Momentum als Air-Speed-Limit speichern.
+        airborneLateralSpeedLimit = Mathf.Max(
+            currentLateralVelocity.magnitude,
+            minimumAirSpeedLimit
+        );
+    }
 
-        float lateralAcceleration = isSprinting ? sprintAcceleration : runAcceleration;
-        
-        Vector3 cameraForwardXZ = new Vector3(
-            _playerCamera.transform.forward.x,
-            0f,
-            _playerCamera.transform.forward.z
-        ).normalized;
+    if (isGrounded)
+    {
+        airborneLateralSpeedLimit = 0f;
+    }
 
-        Vector3 cameraRightXZ = new Vector3(
-            _playerCamera.transform.right.x,
-            0f,
-            _playerCamera.transform.right.z
-        ).normalized;
+    float lateralAcceleration;
 
-        Vector2 transformedInput = TransformedInput(_playerInputReader.MovementInput);
+    if (isGrounded)
+    {
+        lateralAcceleration =
+            isSprinting
+                ? sprintAcceleration
+                : runAcceleration;
+    }
+    else
+    {
+        lateralAcceleration =
+            runAcceleration *
+            airControlMultiplier;
+    }
 
-        Vector3 movementDirection =
-            cameraRightXZ * transformedInput.x +
-            cameraForwardXZ * transformedInput.y;
-        
-        CurrentMovementDirection =
-            movementDirection.sqrMagnitude > 0.001f
-                ? movementDirection.normalized
-                : Vector3.zero;
+    Vector3 movementDelta =
+        movementDirection *
+        lateralAcceleration *
+        Time.deltaTime;
 
-        Vector3 movementDelta =
-            movementDirection *
-            lateralAcceleration *
-            Time.deltaTime;
+    Vector3 newLateralVelocity =
+        currentLateralVelocity +
+        movementDelta;
 
-        Vector3 newVelocity =
-            _characterController.velocity +
-            movementDelta;
+    if (movementDirection.sqrMagnitude > 0.85f)
+    {
+        targetSpeed = runSpeed;
+    }
+    else
+    {
+        targetSpeed = walkSpeed;
+    }
 
-        if (movementDirection.sqrMagnitude > 0.85f)
+    if (isGrounded)
+    {
+        newLateralVelocity = Vector3.MoveTowards(
+            newLateralVelocity,
+            Vector3.zero,
+            drag * Time.deltaTime
+        );
+
+        float groundedSpeedLimit =
+            isSprinting
+                ? sprintSpeed
+                : targetSpeed;
+
+        newLateralVelocity = Vector3.ClampMagnitude(
+            newLateralVelocity,
+            groundedSpeedLimit
+        );
+    }
+    else
+    {
+        bool hasMovementInput =
+            movementDirection.sqrMagnitude > 0.001f;
+
+        if (!hasMovementInput)
         {
-            targetSpeed = runSpeed;
+            // Ohne Input horizontale Geschwindigkeit abbauen.
+            newLateralVelocity = Vector3.MoveTowards(
+                currentLateralVelocity,
+                Vector3.zero,
+                airDeceleration * Time.deltaTime
+            );
+        }
+        else if (airborneLateralSpeedLimit <= 0.001f)
+        {
+            newLateralVelocity = Vector3.zero;
         }
         else
         {
-            targetSpeed = walkSpeed;
+            // Air Control erlauben, aber keinen Speed über das
+            // beim Absprung gespeicherte Momentum hinaus.
+            newLateralVelocity = Vector3.ClampMagnitude(
+                newLateralVelocity,
+                airborneLateralSpeedLimit
+            );
         }
-        
-        float clampLateralMagnitude =
-            isSprinting ? sprintSpeed : targetSpeed;
-
-        Vector3 currentDrag =
-            newVelocity.normalized *
-            drag *
-            Time.deltaTime;
-
-        newVelocity =
-            newVelocity.magnitude > drag * Time.deltaTime
-                ? newVelocity - currentDrag
-                : Vector3.zero;
-
-        newVelocity = Vector3.ClampMagnitude(
-            newVelocity,
-            clampLateralMagnitude
-        );
-
-        Vector3 lateralVelocity = new Vector3(
-            newVelocity.x,
-            0f,
-            newVelocity.z
-        );
-
-        CurrentSpeed = lateralVelocity.magnitude;
-
-        newVelocity.y += _verticalVelocity;
-        
-        _characterController.Move(newVelocity * Time.deltaTime);
-
-        HandleCharacterRotation(movementDirection, isSprinting);
-        HandleSprintStamina(isSprinting);
     }
+
+    CurrentSpeed = newLateralVelocity.magnitude;
+
+    Vector3 finalVelocity =
+        newLateralVelocity +
+        Vector3.up * _verticalVelocity;
+
+    _characterController.Move(
+        finalVelocity * Time.deltaTime
+    );
+
+    HandleCharacterRotation(
+        movementDirection,
+        isSprinting
+    );
+
+    HandleSprintStamina(isSprinting);
+
+    wasGroundedLastFrame = isGrounded;
+}
 
     private void HandleCharacterRotation(Vector3 movementDirection, bool isSprinting)
     {

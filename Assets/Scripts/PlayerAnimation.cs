@@ -22,7 +22,7 @@ public class PlayerAnimation : MonoBehaviour
 
     private static readonly int isGroundedHash = Animator.StringToHash("IsGrounded");
     private static readonly int isFallingHash = Animator.StringToHash("IsFalling");
-
+    private static readonly int isJumpingHash = Animator.StringToHash("IsJumping");
     private static readonly int attackHash = Animator.StringToHash("Attack");
     private static readonly int cancelAttackHash = Animator.StringToHash("CancelAttack");
     private static readonly int attackFinishedHash = Animator.StringToHash("AttackFinished");
@@ -52,11 +52,13 @@ public class PlayerAnimation : MonoBehaviour
     private void UpdateAnimationState()
     {
         bool isFalling = _playerState.CurrentPlayerMovementState == PlayerMovementState.Falling;
+        bool isJumping = _playerState.CurrentPlayerMovementState == PlayerMovementState.Jumping;
         bool isGrounded = _playerState.InGroundedState();
 
         animator.SetBool(isGroundedHash, isGrounded);
         animator.SetBool(isFallingHash, isFalling);
-
+        animator.SetBool(isJumpingHash, isJumping);
+        
         UpdateMovementBlend();
     }
 

@@ -1204,9 +1204,9 @@ PrefabInstance:
       propertyPath: m_Name
       value: Player
       objectReference: {fileID: 0}
-    - target: {fileID: 2151813214228543984, guid: 73964f7df13f7654386cd8cd51282a78, type: 3}
-      propertyPath: damageSource
-      value: 
+    - target: {fileID: 4519835721797427174, guid: 73964f7df13f7654386cd8cd51282a78, type: 3}
+      propertyPath: airDeceleration
+      value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 5406081347212514150, guid: 73964f7df13f7654386cd8cd51282a78, type: 3}
       propertyPath: m_LocalPosition.x

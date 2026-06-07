@@ -180,7 +180,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 537c572526947ef42a81801311cdb1eb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Health
-  maxHealth: 30
+  maxHealth: 500
   startWithFullHealth: 1
   currentHealth: 0
   logDamage: 1
@@ -257,7 +257,7 @@ MonoBehaviour:
   health: {fileID: 5893344846809326578}
   hitEffectAsset: {fileID: 8926484042661614526, guid: d964e5751f87e1a43925279985517ab2, type: 3}
   fallbackSpawnPoint: {fileID: 6420664203532913887}
-  spawnOffset: 0.15
+  spawnOffset: 0.2
   alignToHitDirection: 1
   invertDirection: 1
   destroyDelay: 2
@@ -286,7 +286,7 @@ Transform:
   m_GameObject: {fileID: 2659108556450089725}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.633, z: 0}
+  m_LocalPosition: {x: 0, y: 0.3, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
