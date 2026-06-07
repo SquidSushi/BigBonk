@@ -30,6 +30,8 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float airControlMultiplier = 0.25f;
     [Tooltip("Erlaubte Geschwindigkeit bei einem Sprung aus dem Stand. 0 bedeutet kein horizontales Air Movement aus dem Stand.")]
     [SerializeField] private float minimumAirSpeedLimit = 0f;
+    [Tooltip("Wie schnell horizontales Momentum ohne Movement-Input in der Luft abgebaut wird.")]
+    [SerializeField] private float airDeceleration = 15f;
     
     [Header("Lock On Movement")]
     [Tooltip("Wie schnell sich der Player im Lock-on zum Target dreht. Wert ist Grad pro Sekunde.")]
@@ -363,14 +365,26 @@ public class PlayerController : MonoBehaviour
     }
     else
     {
-        // In der Luft darf gelenkt werden,
-        // aber die Geschwindigkeit darf nicht über das Absprung-Momentum steigen.
-        if (airborneLateralSpeedLimit <= 0.001f)
+        bool hasMovementInput =
+            movementDirection.sqrMagnitude > 0.001f;
+
+        if (!hasMovementInput)
+        {
+            // Ohne Input horizontale Geschwindigkeit abbauen.
+            newLateralVelocity = Vector3.MoveTowards(
+                currentLateralVelocity,
+                Vector3.zero,
+                airDeceleration * Time.deltaTime
+            );
+        }
+        else if (airborneLateralSpeedLimit <= 0.001f)
         {
             newLateralVelocity = Vector3.zero;
         }
         else
         {
+            // Air Control erlauben, aber keinen Speed über das
+            // beim Absprung gespeicherte Momentum hinaus.
             newLateralVelocity = Vector3.ClampMagnitude(
                 newLateralVelocity,
                 airborneLateralSpeedLimit
