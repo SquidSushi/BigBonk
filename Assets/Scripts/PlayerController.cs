@@ -30,6 +30,8 @@ public class PlayerController : MonoBehaviour
 
     [FormerlySerializedAs("jumpSpeed")]
     public float jumpHeight;
+    [Tooltip("Maximale Geschwindigkeit, mit der der Spieler fallen kann.")]
+    [SerializeField] private float maxFallSpeed = 25f;
 
     [Tooltip("Wie stark man die Bewegungsrichtung in der Luft beeinflussen kann.")]
     [Range(0f, 1f)]
@@ -267,11 +269,8 @@ public class PlayerController : MonoBehaviour
         }
 
         /*
-         * Sobald der Spieler den Boden verlässt, wird eine zuvor
-         * gesetzte Anti-Bump-Geschwindigkeit vollständig entfernt.
-         *
-         * Dadurch beginnt ein Fall von einer Ledge bei 0 und wird
-         * anschließend ausschließlich durch normale Gravity beschleunigt.
+         * Beim Verlassen einer Ledge wird die zuvor gesetzte
+         * Anti-Bump-Geschwindigkeit entfernt.
          */
         if (!_isGrounded && antiBumpActive)
         {
@@ -279,20 +278,29 @@ public class PlayerController : MonoBehaviour
             antiBumpActive = false;
         }
 
-        /*
-         * Falls der Spieler trotz positivem Vertical Speed noch kurz
-         * als grounded erkannt wird, darf Anti-Bump ebenfalls nicht
-         * mehr als aktiv gelten.
-         */
         if (_verticalVelocity > 0f)
         {
             antiBumpActive = false;
         }
 
         /*
-         * Ab hier wirkt ausschließlich normale Gravity.
+         * Normale Gravity anwenden.
          */
         _verticalVelocity -= gravity * Time.deltaTime;
+
+        /*
+         * Fallgeschwindigkeit begrenzen.
+         *
+         * Da eine Fallgeschwindigkeit negativ ist, darf
+         * _verticalVelocity nicht kleiner als -maxFallSpeed werden.
+         */
+        if (_verticalVelocity < 0f)
+        {
+            _verticalVelocity = Mathf.Max(
+                _verticalVelocity,
+                -maxFallSpeed
+            );
+        }
     }
 
     private void HandleAttackVerticalMovementOnly()
