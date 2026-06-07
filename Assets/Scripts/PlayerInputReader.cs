@@ -9,10 +9,10 @@ public class PlayerInputReader : MonoBehaviour
     private InputAction attackAction;
     private InputAction lookAction;
     private InputAction lockOnAction;
-
+    private InputAction jumpAction;
     public Vector2 MovementInput { get; private set; }
     public Vector2 LookInput { get; private set; }
-
+    public bool JumpPressed { get; private set; }
     public bool SprintToggledOn { get; private set; }
 
     // Für bestehenden Code im PlayerCombatController kompatibel lassen.
@@ -30,6 +30,7 @@ public class PlayerInputReader : MonoBehaviour
         attackAction = FindAction("Attack", true);
         lookAction = FindAction("Look", true);
         lockOnAction = FindAction("LockOn", true);
+        jumpAction = FindAction("Jump", true);
     }
 
     private void Update()
@@ -53,6 +54,10 @@ public class PlayerInputReader : MonoBehaviour
         LockOnPressed =
             lockOnAction != null &&
             lockOnAction.WasPressedThisFrame();
+        
+        JumpPressed =
+            jumpAction != null &&
+            jumpAction.WasPressedThisFrame();
 
         UpdateLookDevice();
     }
