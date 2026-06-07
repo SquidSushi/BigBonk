@@ -464,7 +464,12 @@ public class PlayerController : MonoBehaviour
             TransformedInput(
                 _playerInputReader.MovementInput
             );
-
+        Debug.Log(
+            $"Raw: {_playerInputReader.MovementInput} | " +
+            $"Raw Magnitude: {_playerInputReader.MovementInput.magnitude:F3} | " +
+            $"Transformed Magnitude: {transformedInput.magnitude:F3} | " +
+            $"CC Velocity: {_characterController.velocity}"
+        );
         Vector3 movementDirection =
             cameraRightXZ * transformedInput.x +
             cameraForwardXZ * transformedInput.y;
@@ -763,20 +768,23 @@ public class PlayerController : MonoBehaviour
         return direction.normalized;
     }
 
-    private Vector2 TransformedInput(
-        Vector2 movementInput
-    )
+    private Vector2 TransformedInput(Vector2 movementInput)
     {
-        Vector2 normalizedInput =
-            movementInput.normalized;
-
         float inputMagnitude =
-            movementInput.magnitude;
+            Mathf.Clamp01(movementInput.magnitude);
+
+        if (inputMagnitude <= 0.001f)
+        {
+            return Vector2.zero;
+        }
 
         return
-            normalizedInput *
+            movementInput.normalized *
             Mathf.Pow(inputMagnitude, 0.25f);
+        
     }
+    
+    
 
     private bool IsMovingLaterally()
     {
