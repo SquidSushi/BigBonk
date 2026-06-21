@@ -156,6 +156,7 @@ MonoBehaviour:
   dashDistance: 2.5
   dashSpeed: 12
   dashStaminaCost: 20
+  dashCooldownAfterDash: 0.25
   dashInputDeadzone: 0.15
   stopDashWhenLeavingGround: 0
   stopDashOnWallHit: 1
