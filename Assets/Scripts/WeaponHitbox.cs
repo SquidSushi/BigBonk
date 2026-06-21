@@ -1,3 +1,6 @@
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -105,22 +108,5 @@ public class WeaponHitbox : MonoBehaviour
         );
 
         damageable.TakeDamage(damageInfo);
-    }
-    
-    private void OnDrawGizmos()
-    {
-        BoxCollider boxCollider = GetComponent<BoxCollider>();
-
-        if (boxCollider == null)
-            return;
-
-        Gizmos.matrix = transform.localToWorldMatrix;
-
-        if (boxCollider.enabled)
-            Gizmos.color = Color.red;
-        else
-            Gizmos.color = Color.gray;
-
-        Gizmos.DrawWireCube(boxCollider.center, boxCollider.size);
     }
 }
