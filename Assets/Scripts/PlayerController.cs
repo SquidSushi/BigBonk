@@ -70,6 +70,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float dashDistance = 4f;
     [SerializeField] private float dashSpeed = 16f;
     [SerializeField] private float dashStaminaCost = 25f;
+    [SerializeField] private float dashCooldownAfterDash = 0.25f;
 
     [Tooltip("Input unter diesem Wert zählt als kein Dash-Richtungseingabe.")]
     [SerializeField] private float dashInputDeadzone = 0.15f;
@@ -104,6 +105,7 @@ public class PlayerController : MonoBehaviour
     private float dashTimer;
     private float dashDuration;
     private bool dashStaminaActionActive;
+    private float nextDashAllowedTime;
 
     public float CurrentSpeed { get; private set; }
     public Vector3 CurrentMovementDirection { get; private set; }
@@ -138,10 +140,11 @@ public class PlayerController : MonoBehaviour
     private PlayerCombatController _playerCombatController;
     private PlayerLockOnController _playerLockOnController;
     private PlayerStamina _playerStamina;
-    
+    private PlayerAnimation _playerAnimation;
 
     private void Awake()
     {
+        
         _playerInputReader = GetComponent<PlayerInputReader>();
 
         if (_characterController == null)
@@ -158,6 +161,7 @@ public class PlayerController : MonoBehaviour
         _playerCombatController = GetComponent<PlayerCombatController>();
         _playerLockOnController = GetComponent<PlayerLockOnController>();
         _playerStamina = GetComponent<PlayerStamina>();
+        _playerAnimation = GetComponent<PlayerAnimation>();
 
         _antiBump = sprintSpeed;
         _stepOffset = _characterController.stepOffset;
@@ -232,6 +236,9 @@ public class PlayerController : MonoBehaviour
         if (isDashing)
             return false;
         
+        if (Time.time < nextDashAllowedTime)
+            return false;
+        
         if (dashInputLockedUntilCleanRelease)
             return false;
         
@@ -292,6 +299,11 @@ public class PlayerController : MonoBehaviour
 
         _playerState.SetPlayerMovementState(PlayerMovementState.Dashing);
 
+        if (_playerAnimation != null)
+        {
+            _playerAnimation.PlayDash();
+        }
+        
         if (!HasValidLockOnTarget())
         {
             transform.rotation =
@@ -415,6 +427,7 @@ public class PlayerController : MonoBehaviour
             return;
 
         isDashing = false;
+        nextDashAllowedTime = Time.time + dashCooldownAfterDash;
 
         FinishDashStaminaActionIfActive();
 

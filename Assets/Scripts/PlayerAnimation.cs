@@ -26,6 +26,7 @@ public class PlayerAnimation : MonoBehaviour
     private static readonly int attackHash = Animator.StringToHash("Attack");
     private static readonly int cancelAttackHash = Animator.StringToHash("CancelAttack");
     private static readonly int attackFinishedHash = Animator.StringToHash("AttackFinished");
+    private static readonly int dashHash = Animator.StringToHash("Dash");
 
     private float currentBlend;
 
@@ -128,12 +129,14 @@ public class PlayerAnimation : MonoBehaviour
         bool isSprinting = input.SprintToggledOn;
         bool isGrounded = _playerState.InGroundedState();
         bool isAttacking = _playerState.CurrentPlayerMovementState == PlayerMovementState.Attack;
+        bool isDashing = _playerState.CurrentPlayerMovementState == PlayerMovementState.Dashing;
 
         bool shouldUseLockOnMovement =
             isLockedOn &&
             !isSprinting &&
             isGrounded &&
-            !isAttacking;
+            !isAttacking &&
+            !isDashing;
 
         animator.SetBool(useLockOnMovementHash, shouldUseLockOnMovement);
 
@@ -201,5 +204,15 @@ public class PlayerAnimation : MonoBehaviour
     public void SetRootMotion(bool enabled)
     {
         animator.applyRootMotion = enabled;
+    }
+    
+    public void PlayDash()
+    {
+        animator.ResetTrigger(attackHash);
+        animator.ResetTrigger(cancelAttackHash);
+        animator.ResetTrigger(attackFinishedHash);
+        animator.ResetTrigger(dashHash);
+
+        animator.SetTrigger(dashHash);
     }
 }
