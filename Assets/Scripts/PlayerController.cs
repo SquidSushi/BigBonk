@@ -66,6 +66,20 @@ public class PlayerController : MonoBehaviour
     public float attackTurnSpeed = 360f;
     public float maxAttackRotationBudget = 180f;
 
+    [Header("Dash")]
+    [SerializeField] private float dashDistance = 4f;
+    [SerializeField] private float dashSpeed = 16f;
+    [SerializeField] private float dashStaminaCost = 25f;
+
+    [Tooltip("Input unter diesem Wert zählt als kein Dash-Richtungseingabe.")]
+    [SerializeField] private float dashInputDeadzone = 0.15f;
+
+    [Tooltip("Wenn aktiv, endet der Dash sofort, sobald der Spieler den Boden verlässt.")]
+    [SerializeField] private bool stopDashWhenLeavingGround = true;
+
+    [Tooltip("Wenn aktiv, endet der Dash bei Wandkontakt.")]
+    [SerializeField] private bool stopDashOnWallHit = true;
+    
     [Header("Environment Details")]
     [SerializeField] private LayerMask _groundLayers;
 
@@ -85,6 +99,11 @@ public class PlayerController : MonoBehaviour
     private float movingThreshold = 0.01f;
     private float targetSpeed;
     private float _stepOffset;
+    private bool isDashing;
+    private Vector3 dashDirection;
+    private float dashTimer;
+    private float dashDuration;
+    private bool dashStaminaActionActive;
 
     public float CurrentSpeed { get; private set; }
     public Vector3 CurrentMovementDirection { get; private set; }
@@ -112,6 +131,7 @@ public class PlayerController : MonoBehaviour
     private bool _isGrounded;
     private bool antiBumpActive;
     private float _antiBump;
+    private bool dashInputLockedUntilCleanRelease;
 
     private PlayerInputReader _playerInputReader;
     private PlayerState _playerState;
@@ -145,8 +165,30 @@ public class PlayerController : MonoBehaviour
 
     private void Update()
     {
-        
         _isGrounded = IsGrounded();
+        UpdateDashInputLock();
+
+        if (isDashing)
+        {
+            LockDashInputIfUsedDuringDash();
+
+            HandleVerticalMovement();
+            HandleDashMovement();
+
+            wasGroundedLastFrame = _isGrounded;
+            return;
+        }
+
+        TryStartDash();
+
+        if (isDashing)
+        {
+            HandleVerticalMovement();
+            HandleDashMovement();
+
+            wasGroundedLastFrame = _isGrounded;
+            return;
+        }
 
         bool isAttacking =
             _playerCombatController != null &&
@@ -181,8 +223,237 @@ public class PlayerController : MonoBehaviour
             HandleAttackVerticalMovementOnly();
             HandleAttackRotation();
         }
-        
+
         wasGroundedLastFrame = _isGrounded;
+    }
+    
+    private bool TryStartDash()
+    {
+        if (isDashing)
+            return false;
+        
+        if (dashInputLockedUntilCleanRelease)
+            return false;
+        
+        if (!_playerInputReader.DashPressed)
+            return false;
+
+        if (!_isGrounded)
+            return false;
+
+        bool isAttacking =
+            _playerCombatController != null &&
+            _playerCombatController.IsAttackInProgress();
+
+        if (isAttacking)
+        {
+            if (!_playerCombatController.CanCancelAttackIntoDash())
+                return false;
+
+            _playerCombatController.CancelAttackForDash();
+        }
+
+        if (_playerStamina != null && dashStaminaCost > 0f)
+        {
+            if (!_playerStamina.CanUseStaminaAction)
+                return false;
+
+            _playerStamina.BeginStaminaAction();
+            dashStaminaActionActive = true;
+
+            _playerStamina.SpendStamina(dashStaminaCost);
+        }
+
+        StopSprintStaminaActionIfActive();
+
+        dashDirection = CalculateDashDirection();
+
+        if (dashDirection.sqrMagnitude < 0.001f)
+        {
+            dashDirection = transform.forward;
+        }
+
+        dashDirection.y = 0f;
+        dashDirection.Normalize();
+
+        isDashing = true;
+        dashInputLockedUntilCleanRelease = true;
+        dashTimer = 0f;
+
+        dashDuration =
+            dashSpeed <= 0.001f
+                ? 0f
+                : dashDistance / dashSpeed;
+
+        _lateralVelocity = Vector3.zero;
+
+        CurrentSpeed = dashSpeed;
+        CurrentMovementDirection = dashDirection;
+
+        _playerState.SetPlayerMovementState(PlayerMovementState.Dashing);
+
+        if (!HasValidLockOnTarget())
+        {
+            transform.rotation =
+                Quaternion.LookRotation(
+                    dashDirection,
+                    Vector3.up
+                );
+        }
+
+        return true;
+    }
+    
+    private void FinishDashStaminaActionIfActive()
+    {
+        if (_playerStamina == null)
+            return;
+
+        if (!dashStaminaActionActive)
+            return;
+
+        _playerStamina.EndStaminaAction();
+        dashStaminaActionActive = false;
+    }
+    
+    private Vector3 CalculateDashDirection()
+    {
+        Vector2 rawInput = _playerInputReader.MovementInput;
+
+        if (rawInput.sqrMagnitude < dashInputDeadzone * dashInputDeadzone)
+        {
+            return transform.forward;
+        }
+
+        Vector2 transformedInput =
+            TransformedInput(rawInput);
+
+        if (HasValidLockOnTarget())
+        {
+            Vector3 lockOnRight = transform.right;
+            Vector3 lockOnForward = transform.forward;
+
+            lockOnRight.y = 0f;
+            lockOnForward.y = 0f;
+
+            if (lockOnRight.sqrMagnitude > 0.001f)
+                lockOnRight.Normalize();
+
+            if (lockOnForward.sqrMagnitude > 0.001f)
+                lockOnForward.Normalize();
+
+            return
+                lockOnRight * transformedInput.x +
+                lockOnForward * transformedInput.y;
+        }
+
+        Vector3 cameraForwardXZ = new Vector3(
+            _playerCamera.transform.forward.x,
+            0f,
+            _playerCamera.transform.forward.z
+        ).normalized;
+
+        Vector3 cameraRightXZ = new Vector3(
+            _playerCamera.transform.right.x,
+            0f,
+            _playerCamera.transform.right.z
+        ).normalized;
+
+        return
+            cameraRightXZ * transformedInput.x +
+            cameraForwardXZ * transformedInput.y;
+    }
+    
+    private void HandleDashMovement()
+    {
+        if (!isDashing)
+            return;
+
+        if (stopDashWhenLeavingGround && !_isGrounded)
+        {
+            EndDash();
+            return;
+        }
+
+        dashTimer += Time.deltaTime;
+
+        Vector3 dashVelocity =
+            dashDirection * dashSpeed +
+            Vector3.up * _verticalVelocity;
+
+        CollisionFlags collisionFlags =
+            _characterController.Move(
+                dashVelocity * Time.deltaTime
+            );
+
+        CurrentSpeed = dashSpeed;
+        CurrentMovementDirection = dashDirection;
+
+        if (HasValidLockOnTarget())
+        {
+            RotateTowardsLockOnTarget(lockOnTurnSpeed);
+        }
+
+        bool hitWall =
+            (collisionFlags & CollisionFlags.Sides) != 0;
+
+        if (stopDashOnWallHit && hitWall)
+        {
+            EndDash();
+            return;
+        }
+
+        if (dashTimer >= dashDuration)
+        {
+            EndDash();
+        }
+    }
+    
+    private void EndDash()
+    {
+        if (!isDashing)
+            return;
+
+        isDashing = false;
+
+        FinishDashStaminaActionIfActive();
+
+        _lateralVelocity = Vector3.zero;
+        CurrentSpeed = 0f;
+        CurrentMovementDirection = Vector3.zero;
+
+        if (_isGrounded)
+        {
+            _playerState.SetPlayerMovementState(PlayerMovementState.Idling);
+        }
+        else
+        {
+            _playerState.SetPlayerMovementState(PlayerMovementState.Falling);
+        }
+    }
+    
+    private void UpdateDashInputLock()
+    {
+        if (!dashInputLockedUntilCleanRelease)
+            return;
+
+        if (_playerInputReader.SprintDashIsPressed)
+            return;
+
+        if (_playerInputReader.DashPressed)
+            return;
+
+        dashInputLockedUntilCleanRelease = false;
+    }
+
+    private void LockDashInputIfUsedDuringDash()
+    {
+        if (_playerInputReader.SprintDashPressedThisFrame ||
+            _playerInputReader.SprintDashIsPressed ||
+            _playerInputReader.DashPressed)
+        {
+            dashInputLockedUntilCleanRelease = true;
+        }
     }
 
     private void UpdateMovementState()

@@ -21,16 +21,20 @@ public class PlayerCombatController : MonoBehaviour
     [SerializeField] private float walkingCancelInputThreshold = 0.15f;
     [SerializeField] private float walkingCancelLockoutAfterAttackStart = 0.15f;
     [SerializeField] private float ignoreEndEventsAfterAttackStart = 0.08f;
+    [SerializeField] private float dashCancelLockoutAfterAttackStart = 0.15f;
+    
 
     [Header("Debug")]
     [SerializeField] private bool attackInProgress;
     [SerializeField] private bool allowAttacking;
     [SerializeField] private bool allowWalking;
-
+    [SerializeField] private bool allowDashing;
+    
     public int AttackInstanceId { get; private set; }
 
     private float walkingCancelLockedUntil;
     private float ignoreEndEventsUntil;
+    private float dashCancelLockedUntil;
 
     private bool staminaActionActive;
     private Coroutine disableRootMotionRoutine;
@@ -142,8 +146,10 @@ public class PlayerCombatController : MonoBehaviour
 
         allowAttacking = false;
         allowWalking = false;
+        allowDashing = false;
 
         walkingCancelLockedUntil = Time.time + walkingCancelLockoutAfterAttackStart;
+        dashCancelLockedUntil = Time.time + dashCancelLockoutAfterAttackStart;
         ignoreEndEventsUntil = Time.time + ignoreEndEventsAfterAttackStart;
 
         StopDisableRootMotionRoutine();
@@ -194,6 +200,7 @@ public class PlayerCombatController : MonoBehaviour
         attackInProgress = false;
         allowAttacking = false;
         allowWalking = false;
+        allowDashing = false;
 
         FinishStaminaActionIfActive();
 
@@ -227,6 +234,64 @@ public class PlayerCombatController : MonoBehaviour
 
         allowWalking = true;
     }
+    
+    public void AllowDashing()
+    {
+        if (!attackInProgress)
+            return;
+
+        if (Time.time < dashCancelLockedUntil)
+            return;
+
+        allowDashing = true;
+    }
+    
+    public bool CanCancelAttackIntoDash()
+    {
+        if (!attackInProgress)
+            return false;
+
+        if (!allowDashing)
+            return false;
+
+        if (Time.time < dashCancelLockedUntil)
+            return false;
+
+        return true;
+    }
+    
+    public void CancelAttackForDash()
+    {
+        if (!attackInProgress)
+            return;
+
+        attackInProgress = false;
+        allowAttacking = false;
+        allowWalking = false;
+        allowDashing = false;
+
+        FinishStaminaActionIfActive();
+
+        if (weaponHitbox != null)
+        {
+            weaponHitbox.DisableHitbox();
+        }
+
+        if (damageSource != null)
+        {
+            damageSource.ClearCurrentAttack();
+        }
+
+        StopDisableRootMotionRoutine();
+
+        if (playerAnimation != null)
+        {
+            playerAnimation.SetRootMotion(false);
+            playerAnimation.CancelAttackToLocomotion();
+        }
+
+        playerState.SetPlayerMovementState(PlayerMovementState.Idling);
+    }
 
     public void OnAttackAnimationEnd()
     {
@@ -244,7 +309,8 @@ public class PlayerCombatController : MonoBehaviour
         attackInProgress = false;
         allowAttacking = false;
         allowWalking = false;
-
+        allowDashing = false;
+        
         FinishStaminaActionIfActive();
 
         if (damageSource != null)

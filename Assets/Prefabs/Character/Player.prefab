@@ -153,6 +153,12 @@ MonoBehaviour:
   lockOnSprintTurnSpeed: 720
   attackTurnSpeed: 300
   maxAttackRotationBudget: 180
+  dashDistance: 2.5
+  dashSpeed: 12
+  dashStaminaCost: 20
+  dashInputDeadzone: 0.15
+  stopDashWhenLeavingGround: 0
+  stopDashOnWallHit: 1
   _groundLayers:
     serializedVersion: 2
     m_Bits: 1
@@ -171,6 +177,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 24f554de5f389e442a697a269f9dfe83, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerInputReader
+  sprintHoldThreshold: 0.18
 --- !u!114 &6824748287261531865
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -269,9 +276,11 @@ MonoBehaviour:
   walkingCancelInputThreshold: 0.15
   walkingCancelLockoutAfterAttackStart: 0.15
   ignoreEndEventsAfterAttackStart: 0.08
+  dashCancelLockoutAfterAttackStart: 0.15
   attackInProgress: 0
   allowAttacking: 0
   allowWalking: 0
+  allowDashing: 0
 --- !u!114 &8817555315779023540
 MonoBehaviour:
   m_ObjectHideFlags: 0

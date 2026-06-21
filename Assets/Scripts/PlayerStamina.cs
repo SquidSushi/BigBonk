@@ -85,6 +85,18 @@ public class PlayerStamina : MonoBehaviour
         SpendStamina(amount);
         return true;
     }
+    
+    public bool TryUseInstantStaminaAction(float amount)
+    {
+        if (!CanUseStaminaAction)
+            return false;
+
+        BeginStaminaAction();
+        SpendStamina(amount);
+        EndStaminaAction();
+
+        return true;
+    }
 
     public void SpendStamina(float amount)
     {

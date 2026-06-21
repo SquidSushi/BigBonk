@@ -34,7 +34,8 @@ public class PlayerState : MonoBehaviour
                movementState == PlayerMovementState.Walking ||
                movementState == PlayerMovementState.Running ||
                movementState == PlayerMovementState.Sprinting ||
-               movementState == PlayerMovementState.Attack;
+               movementState == PlayerMovementState.Attack ||
+               movementState == PlayerMovementState.Dashing; 
     }
 }
 
@@ -47,6 +48,7 @@ public enum PlayerMovementState
     Jumping = 4,
     Falling = 5,
     Attack = 6,
+    Dashing = 7,
 }
 
 public enum PlayerTargetingState
