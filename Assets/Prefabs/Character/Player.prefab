@@ -1545,6 +1545,10 @@ PrefabInstance:
       propertyPath: m_Layer
       value: 8
       objectReference: {fileID: 0}
+    - target: {fileID: -3880890394189178607, guid: 2a180e86a61e63c4984ff9f39e1ec7ae, type: 3}
+      propertyPath: m_Name
+      value: ripley_Eyes
+      objectReference: {fileID: 0}
     - target: {fileID: -3876252773386273940, guid: 2a180e86a61e63c4984ff9f39e1ec7ae, type: 3}
       propertyPath: m_Layer
       value: 8
@@ -1620,6 +1624,10 @@ PrefabInstance:
     - target: {fileID: -299378583355411362, guid: 2a180e86a61e63c4984ff9f39e1ec7ae, type: 3}
       propertyPath: m_Layer
       value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: -120583504196178930, guid: 2a180e86a61e63c4984ff9f39e1ec7ae, type: 3}
+      propertyPath: m_Name
+      value: newhair2
       objectReference: {fileID: 0}
     - target: {fileID: 17507189439798813, guid: 2a180e86a61e63c4984ff9f39e1ec7ae, type: 3}
       propertyPath: m_Layer
@@ -1871,9 +1879,6 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: -2198660365240865546, guid: 2a180e86a61e63c4984ff9f39e1ec7ae, type: 3}
       insertIndex: -1
       addedObject: {fileID: 8842496845190213426}
-    - targetCorrespondingSourceObject: {fileID: -9002909689117465294, guid: 2a180e86a61e63c4984ff9f39e1ec7ae, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 2409433416660780246}
   m_SourcePrefab: {fileID: 100100000, guid: 2a180e86a61e63c4984ff9f39e1ec7ae, type: 3}
 --- !u!4 &250647412211575846 stripped
 Transform:
@@ -2287,33 +2292,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: -9008997147942184231, guid: 2a180e86a61e63c4984ff9f39e1ec7ae, type: 3}
   m_PrefabInstance: {fileID: 7942528413183101371}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &7869682822817180809 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: -9002909689117465294, guid: 2a180e86a61e63c4984ff9f39e1ec7ae, type: 3}
-  m_PrefabInstance: {fileID: 7942528413183101371}
-  m_PrefabAsset: {fileID: 0}
---- !u!95 &2409433416660780246
-Animator:
-  serializedVersion: 7
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7869682822817180809}
-  m_Enabled: 1
-  m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 9100000, guid: 7ef5520b7bb6627499460e1cb629769a, type: 2}
-  m_CullingMode: 0
-  m_UpdateMode: 0
-  m_ApplyRootMotion: 0
-  m_LinearVelocityBlending: 0
-  m_StabilizeFeet: 0
-  m_AnimatePhysics: 0
-  m_WarningMessage: 
-  m_HasTransformHierarchy: 1
-  m_AllowConstantClipSamplingOptimization: 1
-  m_KeepAnimatorStateOnDisable: 0
-  m_WriteDefaultValuesOnDisable: 0
 --- !u!4 &7907851281379839480 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 254404267832149059, guid: 2a180e86a61e63c4984ff9f39e1ec7ae, type: 3}
